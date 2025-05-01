@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+      "baseUrl": "src",
+      "paths": {
+        "@/*": ["*"],
+        "@components/*": ["components/*"],
+        "@lib/*": ["lib/*"],
+        "@utils/*": ["utils/*"],
+        "@styles/*": ["styles/*"],
+        "@hooks/*": ["hooks/*"],
+        "@pages/*": ["pages/*"]
+      },
+      "jsx": "react-jsx",
+      "moduleResolution": "node",
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist", "build"]
+  }
