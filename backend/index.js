@@ -14,7 +14,7 @@ require('./config/database');
 
 // Middleware
 app.use(cors({
-    origin: 'https://mini-project-devtinder.vercel.app/',
+    origin: 'https://mini-project-devtinder.vercel.app',
     credentials: true
 }));
 app.use(express.json());
