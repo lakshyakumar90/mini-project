@@ -84,7 +84,8 @@ const ChatPage = () => {
 
   // Initialize Socket.IO connection
   useEffect(() => {
-    const newSocket = io('http://localhost:3000');
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     return () => {
