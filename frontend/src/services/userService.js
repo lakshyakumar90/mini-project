@@ -57,12 +57,58 @@ const updateProfile = async (userData) => {
   }
 };
 
+const getFeed = async (page = 1, limit = 10, skills = null) => {
+  try {
+    let url = `/users/feed?page=${page}&limit=${limit}`;
+    if (skills && skills.length > 0) {
+      url += `&skills=${skills.join(',')}`;
+    }
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || 'Failed to fetch feed';
+  }
+};
+
+const getUserById = async (userId) => {
+  try {
+    const response = await api.get(`/users/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || 'Failed to fetch user';
+  }
+};
+
+// Forgot password - request reset token
+const forgotPassword = async (email) => {
+  try {
+    const response = await api.post('/users/forgotpassword', { email });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || 'Failed to process password reset request';
+  }
+};
+
+// Reset password with token
+const resetPassword = async (resetToken, password) => {
+  try {
+    const response = await api.put(`/users/resetpassword/${resetToken}`, { password });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || 'Failed to reset password';
+  }
+};
+
 const authService = {
   register,
   login,
   logout,
   getCurrentUser,
   updateProfile,
+  getFeed,
+  getUserById,
+  forgotPassword,
+  resetPassword,
 };
 
 export default authService;

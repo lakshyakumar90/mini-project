@@ -192,7 +192,7 @@ const updateProfile = async (req, res) => {
 };
 
 // @desc    Get all users (for discovery)
-// @route   GET /api/users
+// @route   GET /api/users/feed
 // @access  Private
 const getAllUsers = async (req, res) => {
   try {
@@ -204,8 +204,27 @@ const getAllUsers = async (req, res) => {
     // Filter by skills if provided
     const skillsFilter = req.query.skills ? { skills: { $in: req.query.skills.split(',') } } : {};
 
+    // Get all connections for the current user
+    const connections = await Connection.find({
+      $or: [
+        { requester: req.user._id, status: 'accepted' },
+        { recipient: req.user._id, status: 'accepted' }
+      ]
+    });
+
+    // Extract IDs of connected users
+    const connectedUserIds = connections.map(connection => {
+      return connection.requester.toString() === req.user._id.toString()
+        ? connection.recipient
+        : connection.requester;
+    });
+
+    // Add the current user's ID to the exclusion list
+    const excludedIds = [req.user._id, ...connectedUserIds];
+
+    // Find users excluding the current user and connected users
     const users = await User.find({
-      _id: { $ne: req.user._id },
+      _id: { $nin: excludedIds },
       ...skillsFilter
     })
       .select('name email bio skills profilePicture')
@@ -213,7 +232,7 @@ const getAllUsers = async (req, res) => {
       .limit(limit);
 
     const total = await User.countDocuments({
-      _id: { $ne: req.user._id },
+      _id: { $nin: excludedIds },
       ...skillsFilter
     });
 
@@ -269,6 +288,76 @@ const logout = (req, res) => {
   });
 };
 
+
+
+// @desc    Forgot password - generate token and send email
+// @route   POST /api/users/forgotpassword
+// @access  Public
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No user with that email' });
+    }
+
+    // Generate reset token
+    const resetToken = user.createPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    // In a real application, you would send an email with the reset link
+    // For this project, we'll just return the token in the response
+    // The reset URL would be: ${req.protocol}://${req.get('host')}/resetpassword/${resetToken}
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset token generated',
+      resetToken // In production, you wouldn't return this directly
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Reset password
+// @route   PUT /api/users/resetpassword/:resetToken
+// @access  Public
+const resetPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const { resetToken } = req.params;
+
+    // Hash the token from params
+    const hashedToken = require('crypto')
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    // Find user by token and check if token is still valid
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    // Set new password and clear reset fields
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    // Send token response with cookie
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Export all controller functions
 module.exports = {
   register,
@@ -277,5 +366,7 @@ module.exports = {
   getProfile,
   updateProfile,
   getAllUsers,
-  getUserById
+  getUserById,
+  forgotPassword,
+  resetPassword
 };

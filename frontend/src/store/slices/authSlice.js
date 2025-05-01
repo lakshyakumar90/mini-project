@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import authService from '@/services/authService';
+import authService from '@/services/userService';
 
 // Async thunks
 export const registerUser = createAsyncThunk(
@@ -52,6 +52,30 @@ export const updateUserProfile = createAsyncThunk(
   }
 );
 
+export const forgotPasswordRequest = createAsyncThunk(
+  'auth/forgotPassword',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await authService.forgotPassword(email);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
+
+export const resetPasswordWithToken = createAsyncThunk(
+  'auth/resetPassword',
+  async ({ resetToken, password }, { rejectWithValue }) => {
+    try {
+      const response = await authService.resetPassword(resetToken, password);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
+
 export const getCurrentUser = createAsyncThunk(
   'auth/getCurrentUser',
   async (_, { rejectWithValue }) => {
@@ -67,12 +91,17 @@ export const getCurrentUser = createAsyncThunk(
 );
 
 
+
 const initialState = {
   user: null,
   token: null, // Store token if your auth service provides it
   isAuthenticated: false,
   loading: false,
   error: null,
+  passwordResetSuccess: false,
+  passwordResetToken: null,
+  passwordResetError: null,
+  passwordResetLoading: false,
 };
 
 const authSlice = createSlice({
@@ -81,6 +110,12 @@ const authSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    clearPasswordResetState: (state) => {
+      state.passwordResetSuccess = false;
+      state.passwordResetToken = null;
+      state.passwordResetError = null;
+      state.passwordResetLoading = false;
     },
     // Optional: A reducer to manually set user/token if needed (e.g., from localStorage on app load)
     setAuthData: (state, action) => {
@@ -196,9 +231,50 @@ const authSlice = createSlice({
         // Set error only if it's a real error, not just "not authenticated"
         // You might need to inspect action.payload structure from authService
         state.error = action.payload;
+      })
+
+      // Forgot Password cases
+      .addCase(forgotPasswordRequest.pending, (state) => {
+        state.passwordResetLoading = true;
+        state.passwordResetError = null;
+        state.passwordResetSuccess = false;
+        state.passwordResetToken = null;
+      })
+      .addCase(forgotPasswordRequest.fulfilled, (state, action) => {
+        state.passwordResetLoading = false;
+        state.passwordResetSuccess = true;
+        // In a real app, you wouldn't store the token in the state
+        // This is just for demonstration purposes
+        state.passwordResetToken = action.payload.resetToken;
+      })
+      .addCase(forgotPasswordRequest.rejected, (state, action) => {
+        state.passwordResetLoading = false;
+        state.passwordResetError = action.payload;
+        state.passwordResetSuccess = false;
+      })
+
+      // Reset Password cases
+      .addCase(resetPasswordWithToken.pending, (state) => {
+        state.passwordResetLoading = true;
+        state.passwordResetError = null;
+      })
+      .addCase(resetPasswordWithToken.fulfilled, (state, action) => {
+        state.passwordResetLoading = false;
+        state.passwordResetSuccess = true;
+        state.passwordResetToken = null;
+        // If the API returns user data after reset, update auth state
+        if (action.payload && action.payload.user) {
+          state.isAuthenticated = true;
+          state.user = action.payload.user;
+          state.token = action.payload.token || null;
+        }
+      })
+      .addCase(resetPasswordWithToken.rejected, (state, action) => {
+        state.passwordResetLoading = false;
+        state.passwordResetError = action.payload;
       });
   },
 });
 
-export const { clearError, setAuthData } = authSlice.actions;
+export const { clearError, clearPasswordResetState, setAuthData } = authSlice.actions;
 export default authSlice.reducer;

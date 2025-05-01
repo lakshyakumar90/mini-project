@@ -49,11 +49,17 @@ const Navbar = () => {
                   <Link to="/dashboard">Dashboard</Link>
                 </Button>
               )}
-              <Avatar>
-                <AvatarImage src={user?.avatar} alt={user?.name} />
-                <AvatarFallback>{user?.name?.charAt(0) || 'U'}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium hidden md:inline">{user?.name}</span>
+              <Link to="/profile">
+                <Avatar className="cursor-pointer hover:opacity-80 transition-opacity">
+                  <AvatarImage src={user?.profilePicture} alt={user?.name?.[0] || 'U'} />
+                  <AvatarFallback>{user?.name?.[0] || 'U'}</AvatarFallback>
+                </Avatar>
+              </Link>
+              <Link to="/profile" className="hover:underline">
+                <span className="text-sm font-medium hidden md:inline">
+                  {user?.name ? user.name.split(' ')[0].replace(/^\w/, (c) => c.toUpperCase()) : ''}
+                </span>
+              </Link>
               <Button
                 variant="ghost"
                 onClick={handleLogout}

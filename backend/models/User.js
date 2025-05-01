@@ -21,6 +21,8 @@ const userSchema = new mongoose.Schema({
     minlength: 8,
     select: false
   },
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   bio: {
     type: String,
     default: '',
@@ -67,6 +69,23 @@ userSchema.pre('save', async function (next) {
 // Method to check if password is correct
 userSchema.methods.correctPassword = async function (candidatePassword, userPassword) {
   return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+// Generate password reset token
+userSchema.methods.createPasswordResetToken = function() {
+  // Generate random token
+  const resetToken = require('crypto').randomBytes(32).toString('hex');
+
+  // Hash token and set to resetPasswordToken field
+  this.resetPasswordToken = require('crypto')
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  // Set expire time - 10 minutes
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
 };
 
 const User = mongoose.model('User', userSchema);

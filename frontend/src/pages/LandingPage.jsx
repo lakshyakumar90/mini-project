@@ -1,11 +1,24 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Code, Users, Zap, Star, Globe, Shield, ArrowRight } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import Navbar from '@/components/Navbar';
+import { useSelector, useDispatch } from 'react-redux';
+import { useEffect } from 'react';
+import { getCurrentUser } from '@/store/slices/authSlice';
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { isAuthenticated, loading } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
   const features = [
     {
       icon: Users,
