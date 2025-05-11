@@ -122,8 +122,27 @@ const chatSlice = createSlice({
         if (Array.isArray(state.messages[chatId]) && state.messages[chatId].length > 1) {
           state.messages[chatId].sort((a, b) => {
             if (!a || !b) return 0;
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+            // Ensure we're working with actual Date objects for comparison
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() :
+                         (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() :
+                         (b.timestamp ? new Date(b.timestamp).getTime() : 0);
+
+            // If timestamps are exactly the same (which can happen with fast messages),
+            // use the message ID as a secondary sort criterion
+            if (timeA === timeB) {
+              // For temp IDs (which contain timestamps), extract and compare the timestamps
+              if (a._id && a._id.startsWith('temp-') && b._id && b._id.startsWith('temp-')) {
+                const idTimeA = parseInt(a._id.split('-')[1], 10);
+                const idTimeB = parseInt(b._id.split('-')[1], 10);
+                return idTimeA - idTimeB;
+              }
+              // If we can't compare by ID timestamp, maintain current order
+              return 0;
+            }
+
             return timeA - timeB; // Ascending order (oldest first)
           });
         }
@@ -207,8 +226,20 @@ const chatSlice = createSlice({
           // Sort messages by timestamp to ensure chronological order (oldest first)
           const sortedMessages = [...messages].sort((a, b) => {
             if (!a || !b) return 0;
-            const timeA = a.createdAt || a.timestamp ? new Date(a.createdAt || a.timestamp).getTime() : 0;
-            const timeB = b.createdAt || b.timestamp ? new Date(b.createdAt || b.timestamp).getTime() : 0;
+
+            // Ensure we're working with actual Date objects for comparison
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() :
+                         (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() :
+                         (b.timestamp ? new Date(b.timestamp).getTime() : 0);
+
+            // If timestamps are exactly the same, use message ID as secondary sort
+            if (timeA === timeB && a._id && b._id) {
+              // If both are MongoDB ObjectIds (string format), compare them
+              return a._id.localeCompare(b._id);
+            }
+
             return timeA - timeB; // Ascending order (oldest first)
           });
 

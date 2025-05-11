@@ -172,7 +172,11 @@ const ChatPage = () => {
             _id: newMessage._id || `received-${Date.now()}`, // Use real ID if available
             sender: messageSender,
             content: newMessage.text || newMessage.content || '',
-            createdAt: newMessage.timestamp || new Date(),
+            // Ensure timestamp is in ISO format for consistent sorting
+            createdAt: newMessage.timestamp ?
+              (typeof newMessage.timestamp === 'string' ?
+                newMessage.timestamp : new Date(newMessage.timestamp).toISOString())
+              : new Date().toISOString(),
             read: newMessage.read || false,
             readAt: newMessage.readAt || null
           };
@@ -307,18 +311,20 @@ const ChatPage = () => {
     if (!user || !user._id) return;
 
     try {
-      const timestamp = new Date();
+      // Create a precise timestamp with millisecond precision
+      const now = new Date();
+      const timestamp = now.toISOString(); // Use ISO string for consistent formatting
       const messageContent = message.trim();
 
       // Create a temporary message object for immediate display
       const tempMessage = {
-        _id: `temp-${Date.now()}`,
+        _id: `temp-${Date.now()}`, // Use current timestamp for unique ID
         sender: user._id, // For UI display
         senderId: user._id, // For compatibility with new schema
         content: messageContent, // For UI display
         text: messageContent, // For compatibility with new schema
-        createdAt: timestamp, // For UI display
-        timestamp: timestamp, // For compatibility with new schema
+        createdAt: timestamp, // For UI display - use ISO string
+        timestamp: timestamp, // For compatibility with new schema - use ISO string
         read: false,
         readAt: null
       };
@@ -339,7 +345,8 @@ const ChatPage = () => {
           sender: user._id, // For old schema
           senderId: user._id, // For new schema
           receiver: activeChat,
-          timestamp: timestamp
+          timestamp: timestamp, // Already in ISO string format from earlier
+          _id: tempMessage._id // Include the temporary ID for correlation
         });
       }
     } catch (error) {
@@ -563,8 +570,30 @@ const ChatPage = () => {
                           // Sort messages by timestamp (oldest first)
                           [...messages[activeChat]]
                             .sort((a, b) => {
-                              const timeA = a && a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                              const timeB = b && b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                              if (!a || !b) return 0;
+
+                              // Ensure we're working with actual Date objects for comparison
+                              const timeA = a.createdAt ? new Date(a.createdAt).getTime() :
+                                          (a.timestamp ? new Date(a.timestamp).getTime() : 0);
+
+                              const timeB = b.createdAt ? new Date(b.createdAt).getTime() :
+                                          (b.timestamp ? new Date(b.timestamp).getTime() : 0);
+
+                              // If timestamps are exactly the same (which can happen with fast messages),
+                              // use the message ID as a secondary sort criterion
+                              if (timeA === timeB) {
+                                // For temp IDs (which contain timestamps), extract and compare the timestamps
+                                if (a._id && a._id.startsWith('temp-') && b._id && b._id.startsWith('temp-')) {
+                                  const idTimeA = parseInt(a._id.split('-')[1], 10);
+                                  const idTimeB = parseInt(b._id.split('-')[1], 10);
+                                  return idTimeA - idTimeB;
+                                }
+                                // If both are MongoDB ObjectIds (string format), compare them
+                                else if (a._id && b._id) {
+                                  return a._id.localeCompare(b._id);
+                                }
+                              }
+
                               return timeA - timeB; // Ascending order (oldest first)
                             })
                             .map((msg, index) => {
