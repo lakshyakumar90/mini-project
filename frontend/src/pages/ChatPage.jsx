@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -360,10 +360,37 @@ const ChatPage = () => {
     return format(date, 'h:mm a');
   };
 
+  // Define swipe handlers with useCallback to prevent unnecessary re-renders
+  const handleSwipeLeft = useCallback(() => {
+    // On swipe left, show chat (hide sidebar) if we're in mobile and have a selected chat
+    if (isMobileView && selectedChat && showSidebar) {
+      setShowSidebar(false);
+    }
+  }, [isMobileView, selectedChat, showSidebar]);
+
+  const handleSwipeRight = useCallback(() => {
+    // On swipe right, show sidebar if we're in mobile
+    if (isMobileView && !showSidebar) {
+      setShowSidebar(true);
+    }
+  }, [isMobileView, showSidebar]);
+
+  // Use the updated hook API - pass arguments directly instead of as an object
+  // This hook must be called in every render, not conditionally
+  const swipeRef = useSwipeGesture(
+    handleSwipeLeft,
+    handleSwipeRight,
+    70, // Threshold - require a bit more movement for a swipe
+    300 // Timeout
+  );
+
   // If no connections, show a message
   if (connections && connections.length === 0) {
     return (
-      <div className="h-[calc(100vh-8rem)] flex items-center justify-center p-4">
+      <div
+        className="h-[calc(100vh-8rem)] flex items-center justify-center p-4"
+        ref={swipeRef} // Still attach the ref even in the "no connections" view
+      >
         <Card className="w-full max-w-md p-4 md:p-6">
           <CardHeader>
             <CardTitle className="text-center">No Connections</CardTitle>
@@ -383,29 +410,6 @@ const ChatPage = () => {
       </div>
     );
   }
-
-  // Set up swipe gestures for mobile - always define these handlers
-  const handleSwipeLeft = () => {
-    // On swipe left, show chat (hide sidebar) if we're in mobile and have a selected chat
-    if (isMobileView && selectedChat && showSidebar) {
-      setShowSidebar(false);
-    }
-  };
-
-  const handleSwipeRight = () => {
-    // On swipe right, show sidebar if we're in mobile
-    if (isMobileView && !showSidebar) {
-      setShowSidebar(true);
-    }
-  };
-
-  // Always call the hook with the same parameters
-  const swipeRef = useSwipeGesture({
-    onSwipeLeft: handleSwipeLeft,
-    onSwipeRight: handleSwipeRight,
-    threshold: 70, // Require a bit more movement for a swipe
-    timeout: 300
-  });
 
   return (
     <div

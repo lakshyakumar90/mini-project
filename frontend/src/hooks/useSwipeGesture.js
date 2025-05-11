@@ -1,22 +1,36 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 /**
  * A hook to detect swipe gestures on touch devices
- * @param {Object} options - Configuration options
- * @param {Function} options.onSwipeLeft - Callback for left swipe
- * @param {Function} options.onSwipeRight - Callback for right swipe
- * @param {number} options.threshold - Minimum distance for a swipe (px)
- * @param {number} options.timeout - Maximum time for a swipe (ms)
+ * @param {Function} onSwipeLeft - Callback for left swipe
+ * @param {Function} onSwipeRight - Callback for right swipe
+ * @param {number} threshold - Minimum distance for a swipe (px)
+ * @param {number} timeout - Maximum time for a swipe (ms)
  * @returns {Object} - Ref to attach to the element
  */
-const useSwipeGesture = ({
-  onSwipeLeft,
-  onSwipeRight,
+const useSwipeGesture = (
+  onSwipeLeft = () => {},
+  onSwipeRight = () => {},
   threshold = 50,
   timeout = 300
-}) => {
+) => {
+  // Always create the ref
   const elementRef = useRef(null);
 
+  // Memoize the callbacks to prevent unnecessary effect triggers
+  const handleSwipeLeft = useCallback(() => {
+    if (typeof onSwipeLeft === 'function') {
+      onSwipeLeft();
+    }
+  }, [onSwipeLeft]);
+
+  const handleSwipeRight = useCallback(() => {
+    if (typeof onSwipeRight === 'function') {
+      onSwipeRight();
+    }
+  }, [onSwipeRight]);
+
+  // Set up the event listeners
   useEffect(() => {
     // Always define these variables and functions
     let startX = 0;
@@ -49,10 +63,10 @@ const useSwipeGesture = ({
 
       // Check if the swipe distance exceeds the threshold
       if (Math.abs(deltaX) >= threshold) {
-        if (deltaX > 0 && onSwipeRight) {
-          onSwipeRight();
-        } else if (deltaX < 0 && onSwipeLeft) {
-          onSwipeLeft();
+        if (deltaX > 0) {
+          handleSwipeRight();
+        } else {
+          handleSwipeLeft();
         }
       }
     };
@@ -74,7 +88,7 @@ const useSwipeGesture = ({
 
     // Always return a cleanup function, even if empty
     return () => {};
-  }, [onSwipeLeft, onSwipeRight, threshold, timeout]);
+  }, [handleSwipeLeft, handleSwipeRight, threshold, timeout]);
 
   return elementRef;
 };
