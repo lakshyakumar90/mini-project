@@ -83,6 +83,8 @@ const chatSlice = createSlice({
     },
     addMessage: (state, action) => {
       const { chatId, message } = action.payload;
+      if (!chatId || !message) return;
+
       if (!state.messages[chatId]) {
         state.messages[chatId] = [];
       }
@@ -90,9 +92,10 @@ const chatSlice = createSlice({
       // Check if message with same ID already exists to avoid duplicates
       // Also check for messages with the same content and timestamp (within 1 second)
       const messageExists = state.messages[chatId].some(msg => {
+        if (!msg) return false;
+
         // Check by ID if available
         if (msg._id && message._id && msg._id === message._id) {
-          console.log('Duplicate message detected by ID:', message._id);
           return true;
         }
 
@@ -104,7 +107,6 @@ const chatSlice = createSlice({
 
           // If messages are within 1 second of each other, consider them duplicates
           if (timeDiff < 1000) {
-            console.log('Duplicate message detected by content and timestamp:', message);
             return true;
           }
         }
@@ -113,14 +115,23 @@ const chatSlice = createSlice({
       });
 
       if (!messageExists) {
+        // Add the message to the array
         state.messages[chatId].push(message);
+
+        // Sort messages by timestamp to ensure chronological order (oldest first)
+        if (Array.isArray(state.messages[chatId]) && state.messages[chatId].length > 1) {
+          state.messages[chatId].sort((a, b) => {
+            if (!a || !b) return 0;
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeA - timeB; // Ascending order (oldest first)
+          });
+        }
 
         // Increment unread count if this chat is not active
         if (state.activeChat !== chatId) {
           state.unreadCounts[chatId] = (state.unreadCounts[chatId] || 0) + 1;
         }
-
-        console.log(`Message added to chat ${chatId}:`, message);
       }
     },
     setMessages: (state, action) => {
@@ -144,6 +155,41 @@ const chatSlice = createSlice({
     setError: (state, action) => {
       state.error = action.payload;
     },
+    markMessagesAsRead: (state, action) => {
+      const { chatId, messageIds } = action.payload;
+
+      if (!chatId) return; // Guard against null chatId
+
+      // If no specific message IDs are provided, mark all messages in the chat as read
+      if (!messageIds || messageIds.length === 0) {
+        if (state.messages[chatId] && Array.isArray(state.messages[chatId])) {
+          state.messages[chatId].forEach(message => {
+            if (!message) return; // Skip null messages
+            // Only mark messages from the other user as read
+            if (message.sender && message.sender !== state.activeChat) {
+              message.read = true;
+              message.readAt = new Date().toISOString();
+            }
+          });
+        }
+      } else {
+        // Mark only specific messages as read
+        if (state.messages[chatId] && Array.isArray(state.messages[chatId])) {
+          state.messages[chatId].forEach(message => {
+            if (!message || !message._id) return; // Skip null messages or messages without _id
+            if (messageIds.includes(message._id)) {
+              message.read = true;
+              message.readAt = new Date().toISOString();
+            }
+          });
+        }
+      }
+
+      // Reset unread count for this chat
+      if (state.unreadCounts) {
+        state.unreadCounts[chatId] = 0;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -158,12 +204,17 @@ const chatSlice = createSlice({
 
         // Make sure messages have the correct format
         if (messages && Array.isArray(messages)) {
-          console.log('Received messages from API:', messages);
+          // Sort messages by timestamp to ensure chronological order (oldest first)
+          const sortedMessages = [...messages].sort((a, b) => {
+            if (!a || !b) return 0;
+            const timeA = a.createdAt || a.timestamp ? new Date(a.createdAt || a.timestamp).getTime() : 0;
+            const timeB = b.createdAt || b.timestamp ? new Date(b.createdAt || b.timestamp).getTime() : 0;
+            return timeA - timeB; // Ascending order (oldest first)
+          });
 
           // Store the messages with the correct format
-          state.messages[userId] = messages;
+          state.messages[userId] = sortedMessages;
         } else {
-          console.error('Invalid messages format received:', messages);
           state.messages[userId] = [];
         }
 
@@ -179,10 +230,9 @@ const chatSlice = createSlice({
       .addCase(sendMessage.pending, () => {
         // No need to set loading state for sending messages
       })
-      .addCase(sendMessage.fulfilled, (_, action) => {
+      .addCase(sendMessage.fulfilled, (_) => {
         // We already added a temporary message when sending, so we don't need to add it again
         // This prevents duplicate messages
-        console.log('Message sent successfully via API:', action.payload);
         // We could update the temporary message with the real ID if needed
       })
       .addCase(sendMessage.rejected, (state, action) => {
@@ -204,6 +254,7 @@ export const {
   clearChat,
   setLoading,
   setError,
+  markMessagesAsRead: markMessagesAsReadAction,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

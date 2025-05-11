@@ -1,9 +1,13 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { motion } from 'motion/react';
-import Navbar from '@/components/Navbar';
-import Sidebar from './Sidebar';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import lazyLoad, { preloadComponents } from '@/utils/lazyLoad';
+
+// Lazy load components with enhanced utility
+const Sidebar = lazyLoad(() => import('./Sidebar'));
+const Navbar = lazyLoad(() => import('@/components/Navbar'));
 
 const MainLayout = () => {
   const { isAuthenticated, loading } = useSelector((state) => state.auth);
@@ -15,12 +19,15 @@ const MainLayout = () => {
     }
   }, [isAuthenticated, loading, navigate]);
 
+  // Preload layout components for better UX
+  useEffect(() => {
+    if (isAuthenticated) {
+      preloadComponents([Navbar, Sidebar]);
+    }
+  }, [isAuthenticated]);
+
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) return null;
@@ -31,16 +38,24 @@ const MainLayout = () => {
       animate={{ opacity: 1 }}
       className="min-h-screen bg-background"
     >
-      <Navbar />
+      <Suspense fallback={<div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur h-14"></div>}>
+        <Navbar />
+      </Suspense>
       <div className="flex">
-        <Sidebar />
+        <Suspense fallback={<div className="w-64 h-[calc(100vh-3.5rem)] border-r bg-background p-4"></div>}>
+          <Sidebar />
+        </Suspense>
         <motion.main
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
           className="flex-1 p-6 overflow-y-auto h-[calc(100vh-3.5rem)] no-scrollbar"
         >
-          <Outlet />
+          <Suspense fallback={<div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>}>
+            <Outlet />
+          </Suspense>
         </motion.main>
       </div>
     </motion.div>

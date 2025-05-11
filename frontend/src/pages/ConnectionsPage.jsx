@@ -103,63 +103,68 @@ const ConnectionsPage = () => {
           animate="show"
           className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
         >
-          {connections.map((connection) => (
-          <motion.div key={connection._id} variants={item}>
-            <Card>
-              <CardHeader className="text-center">
-                <Link to={`/user/${connection._id}`}>
-                  <Avatar className="w-20 h-20 mx-auto hover:opacity-80 transition-opacity">
-                    <AvatarImage src={connection.profilePicture} alt={connection.name} />
-                    <AvatarFallback>{connection.name?.[0]}</AvatarFallback>
-                  </Avatar>
-                  <CardTitle className="mt-4">{connection.name}</CardTitle>
-                  <CardDescription>{connection.role || 'Developer'}</CardDescription>
-                </Link>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {connection.skills?.map((skill) => (
-                    <span
-                      key={skill}
-                      className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary"
+          {connections.map((connection) => {
+            // Skip rendering if connection is null or doesn't have an _id
+            if (!connection || !connection._id) return null;
+
+            return (
+              <motion.div key={connection._id} variants={item}>
+                <Card>
+                  <CardHeader className="text-center">
+                    <Link to={`/user/${connection._id}`}>
+                      <Avatar className="w-20 h-20 mx-auto hover:opacity-80 transition-opacity">
+                        <AvatarImage src={connection.profilePicture} alt={connection.name || 'User'} />
+                        <AvatarFallback>{connection.name?.[0] || 'U'}</AvatarFallback>
+                      </Avatar>
+                      <CardTitle className="mt-4">{connection.name || 'Unknown User'}</CardTitle>
+                      <CardDescription>{connection.role || 'Developer'}</CardDescription>
+                    </Link>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {connection.skills && Array.isArray(connection.skills) && connection.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                      {(!connection.skills || !Array.isArray(connection.skills) || connection.skills.length === 0) && (
+                        <p className="text-sm text-muted-foreground">No skills listed</p>
+                      )}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="justify-center space-x-4">
+                    <Link to={`/chat?userId=${connection._id}`}>
+                      <Button variant="outline" size="sm" className="space-x-2">
+                        <MessageSquare className="h-4 w-4" />
+                        <span>Message</span>
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="space-x-2 text-destructive"
+                      onClick={() => handleRemoveConnection(connection._id)}
+                      disabled={removingId === connection._id}
                     >
-                      {skill}
-                    </span>
-                  ))}
-                  {(!connection.skills || connection.skills.length === 0) && (
-                    <p className="text-sm text-muted-foreground">No skills listed</p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="justify-center space-x-4">
-                <Link to={`/chat?userId=${connection._id}`}>
-                  <Button variant="outline" size="sm" className="space-x-2">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>Message</span>
-                  </Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="space-x-2 text-destructive"
-                  onClick={() => handleRemoveConnection(connection._id)}
-                  disabled={removingId === connection._id}
-                >
-                  {removingId === connection._id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <UserMinus className="h-4 w-4" />
-                  )}
-                  <span>{removingId === connection._id ? 'Removing...' : 'Remove'}</span>
-                </Button>
-              </CardFooter>
-            </Card>
-          </motion.div>
-        ))}
+                      {removingId === connection._id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UserMinus className="h-4 w-4" />
+                      )}
+                      <span>{removingId === connection._id ? 'Removing...' : 'Remove'}</span>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            );
+          })}
       </motion.div>
       )}
 
-      {(!connections || connections.length === 0) && (
+      {(!connections || !Array.isArray(connections) || connections.length === 0) && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
