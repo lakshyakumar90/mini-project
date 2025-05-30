@@ -4,17 +4,14 @@ import { Sun, Moon } from 'lucide-react';
 
 const ThemeToggle = () => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check if user has a preference stored
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       return savedTheme === 'dark';
     }
-    // Check if user's system prefers dark mode
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   useEffect(() => {
-    // Update the document class when theme changes
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');

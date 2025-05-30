@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 const RequestsPage = () => {
   const dispatch = useDispatch();
   const { pendingRequests, loading, error, actionLoading, actionError, actionSuccess } = useSelector((state) => state.connections);
+  console.log('Pending requests:', pendingRequests);
 
   const [processingId, setProcessingId] = useState(null);
   const [showAlert, setShowAlert] = useState(false);

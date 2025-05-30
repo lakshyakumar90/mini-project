@@ -12,29 +12,30 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 const ConnectionsPage = () => {
   const dispatch = useDispatch();
   const { connections, loading, error, actionLoading, actionError, actionSuccess } = useSelector((state) => state.connections);
+  console.log('Connections:', connections);
 
   const [removingId, setRemovingId] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
 
-  // Get the current user from the auth state
+  
   const { user } = useSelector((state) => state.auth);
 
-  // Fetch connections on component mount and when user data changes
+  
   useEffect(() => {
     dispatch(fetchConnections());
   }, [dispatch, user]);
 
-  // Log connections for debugging
+  
   console.log('Connections in component:', connections);
   console.log('Connections length:', connections.length);
 
-  // Show success/error alert when connection action completes
+  
   useEffect(() => {
     if (actionSuccess || actionError) {
       setShowAlert(true);
       setRemovingId(null);
 
-      // Hide alert after 3 seconds
+      
       const timer = setTimeout(() => {
         setShowAlert(false);
       }, 3000);
@@ -104,7 +105,7 @@ const ConnectionsPage = () => {
           className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
         >
           {connections.map((connection) => {
-            // Skip rendering if connection is null or doesn't have an _id
+            
             if (!connection || !connection._id) return null;
 
             return (

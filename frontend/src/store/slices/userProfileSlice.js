@@ -1,17 +1,5 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 import userService from '@/services/userService';
-
-export const fetchUserProfile = createAsyncThunk(
-  'userProfile/fetchUserProfile',
-  async (userId, { rejectWithValue }) => {
-    try {
-      const response = await userService.getUserById(userId);
-      return response.user;
-    } catch (error) {
-      return rejectWithValue(error);
-    }
-  }
-);
 
 const initialState = {
   userProfile: null,
@@ -27,23 +15,31 @@ const userProfileSlice = createSlice({
       state.userProfile = null;
       state.error = null;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchUserProfile.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchUserProfile.fulfilled, (state, action) => {
-        state.loading = false;
-        state.userProfile = action.payload;
-      })
-      .addCase(fetchUserProfile.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+      state.error = null;
+    },
+    setUserProfile: (state, action) => {
+      state.loading = false;
+      state.userProfile = action.payload;
+    },
+    setError: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    }
   },
 });
 
-export const { clearUserProfile } = userProfileSlice.actions;
+// Action creators
+export const fetchUserProfile = (userId) => async (dispatch) => {
+  try {
+    dispatch(setLoading(true));
+    const response = await userService.getUserById(userId);
+    dispatch(setUserProfile(response.user));
+  } catch (error) {
+    dispatch(setError(error));
+  }
+};
+
+export const { clearUserProfile, setLoading, setUserProfile, setError } = userProfileSlice.actions;
 export default userProfileSlice.reducer;

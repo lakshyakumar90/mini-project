@@ -13,7 +13,8 @@ import {
   fetchMessages,
   setActiveChat,
   setChatPartners,
-  addMessage
+  addMessage,
+  loadMoreMessages
 } from '@/store/slices/chatSlice';
 import io from 'socket.io-client';
 import { format } from 'date-fns';
@@ -27,7 +28,7 @@ const ChatPage = () => {
   const userIdFromQuery = queryParams.get('userId');
 
   const { user } = useSelector((state) => state.auth);
-  const { activeChat, messages } = useSelector((state) => state.chat);
+  const { activeChat, messages, loading, pagination } = useSelector((state) => state.chat);
   const { connections } = useSelector((state) => state.connections);
 
   const [message, setMessage] = useState('');
@@ -37,27 +38,29 @@ const ChatPage = () => {
   const [isMobileView, setIsMobileView] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Check if we're in mobile view - separated from sidebar logic to prevent loops
+  
   useEffect(() => {
     const checkMobileView = () => {
       setIsMobileView(window.innerWidth < 768);
     };
 
-    // Initial check
+    
     checkMobileView();
 
-    // Add resize listener
+    
     window.addEventListener('resize', checkMobileView);
 
-    // Cleanup
+    
     return () => window.removeEventListener('resize', checkMobileView);
   }, []);
 
-  // Handle sidebar visibility based on mobile view and selected chat
+  
   useEffect(() => {
-    // Only update sidebar visibility when these dependencies change
-    // to prevent infinite loops
+    
+    
     if (isMobileView && selectedChat) {
       setShowSidebar(false);
     } else if (!isMobileView) {
@@ -65,31 +68,31 @@ const ChatPage = () => {
     }
   }, [isMobileView, selectedChat]);
 
-  // Fetch connections on component mount
+  
   useEffect(() => {
     dispatch(fetchConnections());
   }, [dispatch]);
 
-  // Set connections as chat partners and handle userId from query params
+  
   useEffect(() => {
     try {
-      // Always run the hook, but conditionally perform actions
+      
       if (!connections || !Array.isArray(connections) || connections.length === 0) {
-        return; // Early return, but hook is still executed
+        return; 
       }
 
-      // Filter out any null or invalid connections
+      
       const validConnections = connections.filter(conn => conn && conn._id);
 
       if (validConnections.length > 0) {
-        // Set chat partners only once when connections change
+        
         dispatch(setChatPartners(validConnections));
 
-        // Create a function to set up a chat with a connection
+        
         const setupChatWithConnection = (connection) => {
           if (!connection || !connection._id) return;
 
-          // Create a safe copy of the connection
+          
           const safeConnection = {
             _id: connection._id,
             name: connection.name || 'Unknown User',
@@ -103,14 +106,14 @@ const ChatPage = () => {
           dispatch(fetchMessages({ userId: safeConnection._id }));
         };
 
-        // If we have a userId from query params and no chat is selected yet
+        
         if (userIdFromQuery && !selectedChat) {
           const connectionFromQuery = validConnections.find(conn => conn._id === userIdFromQuery);
           if (connectionFromQuery) {
             setupChatWithConnection(connectionFromQuery);
           }
         }
-        // Otherwise, if no active chat is selected, select the first connection
+        
         else if (!activeChat && !selectedChat) {
           const firstConnection = validConnections[0];
           if (firstConnection) {
@@ -121,14 +124,14 @@ const ChatPage = () => {
     } catch (error) {
       console.error('Error setting up chat partners:', error);
     }
-  // Only depend on connections, activeChat, selectedChat, and userIdFromQuery
-  // Remove dispatch from dependencies as it's stable
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
+  
+  
   }, [connections, activeChat, selectedChat, userIdFromQuery]);
 
-  // Initialize Socket.IO connection - only once
+  
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+    const socketUrl = import.meta.env.VITE_SOCKET_URL;
     try {
       const newSocket = io(socketUrl, {
         reconnection: true,
@@ -146,33 +149,33 @@ const ChatPage = () => {
     } catch (error) {
       console.error('Error initializing socket connection:', error);
     }
-  // Empty dependency array ensures this runs only once
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
+  
   }, []);
 
-  // Handle socket events - always execute the hook but conditionally perform actions
+  
   useEffect(() => {
-    // Define message handler outside the effect to prevent recreating it on each render
+    
     const handleIncomingMessage = (newMessage) => {
       if (!newMessage || !user || !user._id) return;
 
       try {
-        // Only process messages that are actually from someone else
-        // This prevents duplicate messages when you send a message
+        
+        
         const messageSender = newMessage.senderId || newMessage.sender;
 
         if (!messageSender) {
           return;
         }
 
-        // For messages from other users, add them to the state
+        
         if (user && user._id && messageSender !== user._id) {
-          // Create a properly formatted message object
+          
           const formattedMessage = {
-            _id: newMessage._id || `received-${Date.now()}`, // Use real ID if available
+            _id: newMessage._id || `received-${Date.now()}`, 
             sender: messageSender,
             content: newMessage.text || newMessage.content || '',
-            // Ensure timestamp is in ISO format for consistent sorting
+            
             createdAt: newMessage.timestamp ?
               (typeof newMessage.timestamp === 'string' ?
                 newMessage.timestamp : new Date(newMessage.timestamp).toISOString())
@@ -181,7 +184,7 @@ const ChatPage = () => {
             readAt: newMessage.readAt || null
           };
 
-          // Add the message to the chat with the sender's ID as the chatId
+          
           dispatch(addMessage({
             chatId: messageSender,
             message: formattedMessage
@@ -192,16 +195,16 @@ const ChatPage = () => {
       }
     };
 
-    // Only set up socket events if we have a socket and user
+    
     if (socket && user && user._id) {
       try {
-        // Join a room for the current user to receive messages
+        
         socket.emit('join_room', user._id);
 
-        // Listen for incoming messages
+        
         socket.on('receive_message', handleIncomingMessage);
 
-        // Cleanup function
+        
         return () => {
           socket.off('receive_message', handleIncomingMessage);
         };
@@ -210,67 +213,102 @@ const ChatPage = () => {
       }
     }
 
-    // Always return a cleanup function, even if empty
+    
     return () => {};
-  // Remove dispatch from dependencies as it's stable
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
+  
   }, [socket, user]);
 
-  // Scroll to bottom when messages change
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
 
+  
+  const handleScroll = useCallback(() => {
+    if (!messagesContainerRef.current || !activeChat || isLoadingMore) return;
+
+    const { scrollTop, scrollHeight } = messagesContainerRef.current;
+    
+    
+    if (scrollTop === 0 && pagination.page < pagination.pages) {
+      const previousScrollHeight = scrollHeight;
+      setIsLoadingMore(true);
+      
+      dispatch(loadMoreMessages({
+        userId: activeChat,
+        page: pagination.page + 1,
+        limit: pagination.limit
+      })).then(() => {
+        
+        if (messagesContainerRef.current) {
+          const newScrollHeight = messagesContainerRef.current.scrollHeight;
+          messagesContainerRef.current.scrollTop = newScrollHeight - previousScrollHeight;
+        }
+      }).finally(() => {
+        setIsLoadingMore(false);
+      });
+    }
+  }, [activeChat, pagination, isLoadingMore, dispatch]);
+
+  
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages && activeChat && messages[activeChat]) {
+      const lastMessage = messages[activeChat][messages[activeChat].length - 1];
+      if (lastMessage && lastMessage.sender === user._id) {
+        setTimeout(scrollToBottom, 100);
+      }
+    }
+  }, [messages, activeChat, user._id, scrollToBottom]);
 
-  // Show swipe hint for mobile users - with memoized dependencies to prevent loops
+  
   useEffect(() => {
     let timer = null;
 
-    // Determine if we should show the hint
+    
     const shouldShowHint = isMobileView && selectedChat && !showSidebar;
 
     if (shouldShowHint) {
-      // Check if we've shown the hint before
+      
       const hasShownHint = localStorage.getItem('chatSwipeHintShown');
 
       if (!hasShownHint) {
-        // Show the hint
+        
         setShowSwipeHint(true);
 
-        // Hide after 3 seconds
+        
         timer = setTimeout(() => {
           setShowSwipeHint(false);
-          // Remember that we've shown the hint
+          
           localStorage.setItem('chatSwipeHintShown', 'true');
         }, 3000);
       } else {
-        // Make sure hint is hidden if user has seen it before
+        
         setShowSwipeHint(false);
       }
     } else {
-      // Hide the hint in all other cases
+      
       setShowSwipeHint(false);
     }
 
-    // Always return a cleanup function
+    
     return () => {
       if (timer) clearTimeout(timer);
     };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [isMobileView, selectedChat, showSidebar]);
 
-  // Handle chat selection
+  
   const handleSelectChat = (connection) => {
     if (!connection || !connection._id) {
       return;
     }
 
     try {
-      // Make a safe copy of the connection to avoid null reference issues
+      
       const safeConnection = {
         _id: connection._id,
         name: connection.name || 'Unknown User',
@@ -282,121 +320,118 @@ const ChatPage = () => {
       setSelectedChat(safeConnection);
       dispatch(setActiveChat(safeConnection._id));
 
-      // Fetch messages for this chat
+      
       dispatch(fetchMessages({ userId: safeConnection._id }));
 
-      // On mobile, hide the sidebar when a chat is selected
-      // Use the isMobileView state instead of checking window.innerWidth again
+      
       if (isMobileView) {
         setShowSidebar(false);
-        // We don't need to set showSwipeHint here as it's handled by the useEffect
       }
     } catch (error) {
-      // Handle any unexpected errors
       console.error('Error selecting chat:', error);
     }
   };
 
-  // Toggle sidebar visibility (for mobile)
+  
   const toggleSidebar = () => {
     setShowSidebar(prev => !prev);
   };
 
-  // Handle sending a message
+  
   const handleSendMessage = (e) => {
     e.preventDefault();
 
-    // Validate all required data is present
+    
     if (!message || !message.trim() || !activeChat) return;
     if (!user || !user._id) return;
 
     try {
-      // Create a precise timestamp with millisecond precision
+      
       const now = new Date();
-      const timestamp = now.toISOString(); // Use ISO string for consistent formatting
+      const timestamp = now.toISOString(); 
       const messageContent = message.trim();
 
-      // Create a temporary message object for immediate display
+      
       const tempMessage = {
-        _id: `temp-${Date.now()}`, // Use current timestamp for unique ID
-        sender: user._id, // For UI display
-        senderId: user._id, // For compatibility with new schema
-        content: messageContent, // For UI display
-        text: messageContent, // For compatibility with new schema
-        createdAt: timestamp, // For UI display - use ISO string
-        timestamp: timestamp, // For compatibility with new schema - use ISO string
+        _id: `temp-${Date.now()}`, 
+        sender: user._id, 
+        senderId: user._id, 
+        content: messageContent, 
+        text: messageContent, 
+        createdAt: timestamp, 
+        timestamp: timestamp, 
         read: false,
         readAt: null
       };
 
-      // Add the message to the local state immediately
-      // For sent messages, use the activeChat (recipient) as the chatId
+      
+      
       dispatch(addMessage({
         chatId: activeChat,
         message: tempMessage
       }));
 
-      // Only use the socket to send messages to avoid duplicates
-      // The backend will save the message to the database
+      
+      
       if (socket) {
         socket.emit('send_message', {
-          room: activeChat, // The recipient's ID as the room
-          content: messageContent, // Backend will map this to 'text'
-          sender: user._id, // For old schema
-          senderId: user._id, // For new schema
+          room: activeChat, 
+          content: messageContent, 
+          sender: user._id, 
+          senderId: user._id, 
           receiver: activeChat,
-          timestamp: timestamp, // Already in ISO string format from earlier
-          _id: tempMessage._id // Include the temporary ID for correlation
+          timestamp: timestamp, 
+          _id: tempMessage._id 
         });
       }
     } catch (error) {
       console.error('Error sending message:', error);
     }
 
-    // Clear the input field
+    
     setMessage('');
 
-    // Scroll to bottom to show the new message
+    
     setTimeout(scrollToBottom, 100);
   };
 
-  // Format timestamp
+  
   const formatMessageTime = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     return format(date, 'h:mm a');
   };
 
-  // Define swipe handlers with useCallback to prevent unnecessary re-renders
+  
   const handleSwipeLeft = useCallback(() => {
-    // On swipe left, show chat (hide sidebar) if we're in mobile and have a selected chat
+    
     if (isMobileView && selectedChat && showSidebar) {
       setShowSidebar(false);
     }
   }, [isMobileView, selectedChat, showSidebar]);
 
   const handleSwipeRight = useCallback(() => {
-    // On swipe right, show sidebar if we're in mobile
+    
     if (isMobileView && !showSidebar) {
       setShowSidebar(true);
     }
   }, [isMobileView, showSidebar]);
 
-  // Use the updated hook API - pass arguments directly instead of as an object
-  // This hook must be called in every render, not conditionally
+  
+  
   const swipeRef = useSwipeGesture(
     handleSwipeLeft,
     handleSwipeRight,
-    70, // Threshold - require a bit more movement for a swipe
-    300 // Timeout
+    70, 
+    300 
   );
 
-  // If no connections, show a message
+  
   if (connections && connections.length === 0) {
     return (
       <div
         className="h-[calc(100vh-8rem)] flex items-center justify-center p-4"
-        ref={swipeRef} // Still attach the ref even in the "no connections" view
+        ref={swipeRef} 
       >
         <Card className="w-full max-w-md p-4 md:p-6">
           <CardHeader>
@@ -490,7 +525,7 @@ const ChatPage = () => {
               <div className="space-y-4 p-4">
                 {connections && Array.isArray(connections) && connections.length > 0 ? (
                   connections.map((connection) => {
-                    // Skip rendering if connection is null or doesn't have an _id
+                    
                     if (!connection || !connection._id) return null;
 
                     return (
@@ -563,82 +598,67 @@ const ChatPage = () => {
 
                 {/* Scrollable Content Area */}
                 <div className="flex-grow overflow-hidden">
-                  <ScrollArea className="h-full">
-                    <div className="space-y-4 p-4">
+                  <ScrollArea 
+                    ref={messagesContainerRef}
+                    className="h-[calc(100vh-12rem)]"
+                    onScroll={handleScroll}
+                  >
+                    <div className="space-y-4 p-4 min-h-full flex flex-col justify-end">
+                      {isLoadingMore && (
+                        <div className="text-center py-2">
+                          <p className="text-sm text-muted-foreground">Loading more messages...</p>
+                        </div>
+                      )}
                       <AnimatePresence>
                         {messages && activeChat && messages[activeChat] ? (
-                          // Sort messages by timestamp (oldest first)
                           [...messages[activeChat]]
                             .sort((a, b) => {
                               if (!a || !b) return 0;
-
-                              // Ensure we're working with actual Date objects for comparison
                               const timeA = a.createdAt ? new Date(a.createdAt).getTime() :
                                           (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-
                               const timeB = b.createdAt ? new Date(b.createdAt).getTime() :
                                           (b.timestamp ? new Date(b.timestamp).getTime() : 0);
-
-                              // If timestamps are exactly the same (which can happen with fast messages),
-                              // use the message ID as a secondary sort criterion
                               if (timeA === timeB) {
-                                // For temp IDs (which contain timestamps), extract and compare the timestamps
-                                if (a._id && a._id.startsWith('temp-') && b._id && b._id.startsWith('temp-')) {
-                                  const idTimeA = parseInt(a._id.split('-')[1], 10);
-                                  const idTimeB = parseInt(b._id.split('-')[1], 10);
-                                  return idTimeA - idTimeB;
-                                }
-                                // If both are MongoDB ObjectIds (string format), compare them
-                                else if (a._id && b._id) {
-                                  return a._id.localeCompare(b._id);
-                                }
+                                const idTimeA = parseInt(a._id.split('-')[1], 10);
+                                const idTimeB = parseInt(b._id.split('-')[1], 10);
+                                return idTimeA - idTimeB;
                               }
-
-                              return timeA - timeB; // Ascending order (oldest first)
+                              return timeA - timeB;
                             })
                             .map((msg, index) => {
-                            // Determine if this is a sent message (from current user)
-                            // Handle both string IDs and object IDs with _id property
-                            const senderId = msg && msg.sender ?
-                              (typeof msg.sender === 'object' ?
-                                (msg.sender && msg.sender._id ? msg.sender._id : null)
-                                : msg.sender)
-                              : null;
-                            const isSentByMe = senderId && user && user._id ? senderId === user._id : false;
+                              const senderId = msg && msg.sender ?
+                                (typeof msg.sender === 'object' ?
+                                  (msg.sender && msg.sender._id ? msg.sender._id : null)
+                                  : msg.sender)
+                                : null;
+                              const isSentByMe = senderId && user && user._id ? senderId === user._id : false;
 
-                            return (
-                              <motion.div
-                                key={msg && msg._id ? msg._id : `msg-${index}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'}`}
-                              >
-                                <div
-                                  className={`max-w-[85%] md:max-w-[70%] rounded-lg p-3 ${
-                                    isSentByMe
-                                      ? 'bg-primary text-primary-foreground'
-                                      : 'bg-accent'
-                                  }`}
+                              return (
+                                <motion.div
+                                  key={msg && msg._id ? msg._id : `msg-${index}`}
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -20 }}
+                                  className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'} w-full`}
                                 >
-                                  <p className="break-words">{msg && msg.content ? msg.content : ''}</p>
-                                  <div className="flex justify-between items-center mt-1">
-                                    <p className="text-xs opacity-70">
-                                      {msg && msg.createdAt ? formatMessageTime(msg.createdAt) : ''}
+                                  <div
+                                    className={`max-w-[70%] rounded-lg p-3 ${
+                                      isSentByMe
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted'
+                                    }`}
+                                  >
+                                    <p className="text-sm break-words">{msg.content}</p>
+                                    <p className="text-xs mt-1 opacity-70">
+                                      {formatMessageTime(msg.createdAt || msg.timestamp)}
                                     </p>
-                                    {isSentByMe && (
-                                      <p className="text-xs opacity-70 ml-2">
-                                        {msg && msg.read ? 'Read' : 'Sent'}
-                                      </p>
-                                    )}
                                   </div>
-                                </div>
-                              </motion.div>
-                            );
-                          })
+                                </motion.div>
+                              );
+                            })
                         ) : (
-                          <div className="text-center py-10 text-muted-foreground">
-                            No messages yet. Start the conversation!
+                          <div className="text-center py-4 text-muted-foreground">
+                            {loading ? 'Loading messages...' : 'No messages yet'}
                           </div>
                         )}
                       </AnimatePresence>

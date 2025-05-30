@@ -18,7 +18,7 @@ const SignupPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Redirect to dashboard if already authenticated
+  
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard');
@@ -29,12 +29,12 @@ const SignupPage = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // Clear password match error when typing in password fields
+    
     if ((name === 'password' || name === 'confirmPassword') && passwordError) {
       setPasswordError('');
     }
 
-    // Clear redux error when typing
+    
     if (error) dispatch(clearError());
   };
 
@@ -42,7 +42,7 @@ const SignupPage = () => {
     e.preventDefault();
     const { name, email, password, confirmPassword } = formData;
 
-    // Validate password match
+    
     if (password !== confirmPassword) {
       setPasswordError('Passwords do not match');
       return;

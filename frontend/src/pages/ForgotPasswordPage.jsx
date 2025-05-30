@@ -20,7 +20,6 @@ const ForgotPasswordPage = () => {
     passwordResetToken 
   } = useSelector((state) => state.auth);
 
-  // Clear password reset state when component unmounts
   useEffect(() => {
     return () => {
       dispatch(clearPasswordResetState());

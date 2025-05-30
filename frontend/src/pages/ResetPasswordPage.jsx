@@ -24,14 +24,14 @@ const ResetPasswordPage = () => {
     isAuthenticated
   } = useSelector((state) => state.auth);
 
-  // If reset is successful and user is authenticated, redirect to dashboard
+  
   useEffect(() => {
     if (passwordResetSuccess && isAuthenticated) {
       navigate('/dashboard');
     }
   }, [passwordResetSuccess, isAuthenticated, navigate]);
 
-  // Clear password reset state when component unmounts
+  
   useEffect(() => {
     return () => {
       dispatch(clearPasswordResetState());
@@ -41,22 +41,22 @@ const ResetPasswordPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Clear any previous errors
+    
     setPasswordError('');
     
-    // Validate password match
+    
     if (password !== confirmPassword) {
       setPasswordError('Passwords do not match');
       return;
     }
     
-    // Validate password length
+    
     if (password.length < 8) {
       setPasswordError('Password must be at least 8 characters long');
       return;
     }
     
-    // Dispatch reset password action
+    
     dispatch(resetPasswordWithToken({ resetToken, password }));
   };
 

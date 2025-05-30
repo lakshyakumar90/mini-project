@@ -1,17 +1,5 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 import userService from '@/services/userService';
-
-export const fetchFeed = createAsyncThunk(
-  'feed/fetchFeed',
-  async ({ page = 1, limit = 10, skills = null }, { rejectWithValue }) => {
-    try {
-      const response = await userService.getFeed(page, limit, skills);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error);
-    }
-  }
-);
 
 const initialState = {
   users: [],
@@ -33,24 +21,32 @@ const feedSlice = createSlice({
       state.users = [];
       state.pagination = initialState.pagination;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchFeed.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchFeed.fulfilled, (state, action) => {
-        state.loading = false;
-        state.users = action.payload.users;
-        state.pagination = action.payload.pagination;
-      })
-      .addCase(fetchFeed.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+      state.error = null;
+    },
+    setFeedData: (state, action) => {
+      state.loading = false;
+      state.users = action.payload.users;
+      state.pagination = action.payload.pagination;
+    },
+    setError: (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    }
   },
 });
 
-export const { clearFeed } = feedSlice.actions;
+// Action creators
+export const fetchFeed = ({ page = 1, limit = 10, skills = null }) => async (dispatch) => {
+  try {
+    dispatch(setLoading(true));
+    const response = await userService.getFeed(page, limit, skills);
+    dispatch(setFeedData(response));
+  } catch (error) {
+    dispatch(setError(error));
+  }
+};
+
+export const { clearFeed, setLoading, setFeedData, setError } = feedSlice.actions;
 export default feedSlice.reducer;

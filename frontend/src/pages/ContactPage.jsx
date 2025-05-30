@@ -26,7 +26,7 @@ const ContactPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
+    
     setTimeout(() => {
       setIsSubmitting(false);
       setSubmitSuccess(true);
@@ -37,7 +37,7 @@ const ContactPage = () => {
         message: '',
       });
 
-      // Reset success message after 5 seconds
+      
       setTimeout(() => {
         setSubmitSuccess(false);
       }, 5000);

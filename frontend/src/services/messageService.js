@@ -1,18 +1,19 @@
 import axios from 'axios';
 
-// Use environment variable or fallback
+
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-// Create axios instance with credentials support
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
 
-// Get messages between current user and another user
+
 const getMessages = async (userId, page = 1, limit = 20) => {
   try {
     const response = await api.get(`/messages/${userId}?page=${page}&limit=${limit}`);
+    console.log('Messages response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching messages:', error);
@@ -20,7 +21,7 @@ const getMessages = async (userId, page = 1, limit = 20) => {
   }
 };
 
-// Send a message to another user
+
 const sendMessage = async (userId, content) => {
   try {
     const response = await api.post(`/messages/${userId}`, { content });
@@ -32,7 +33,7 @@ const sendMessage = async (userId, content) => {
   }
 };
 
-// Get unread message count
+
 const getUnreadCount = async () => {
   try {
     const response = await api.get('/messages/unread/count');

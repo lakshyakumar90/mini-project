@@ -1,21 +1,21 @@
 import axios from 'axios';
 
-// Use environment variable or fallback
+
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-// Create axios instance with credentials support
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
 
-// Get all connections
+
 const getConnections = async () => {
   try {
     const response = await api.get('/connections');
     console.log('API response from getConnections:', response.data);
 
-    // Ensure we have a valid response with connections
+    
     if (response.data && response.data.success) {
       if (!response.data.connections) {
         console.warn('No connections array in API response:', response.data);
@@ -32,7 +32,7 @@ const getConnections = async () => {
   }
 };
 
-// Get all connection requests
+
 const getConnectionRequests = async () => {
   try {
     const response = await api.get('/connections/requests');
@@ -42,7 +42,7 @@ const getConnectionRequests = async () => {
   }
 };
 
-// Send a connection request
+
 const sendConnectionRequest = async (userId) => {
   try {
     const response = await api.post(`/connections/request/${userId}`);
@@ -52,7 +52,7 @@ const sendConnectionRequest = async (userId) => {
   }
 };
 
-// Accept a connection request
+
 const acceptConnectionRequest = async (userId) => {
   try {
     const response = await api.post(`/connections/accept/${userId}`);
@@ -62,7 +62,7 @@ const acceptConnectionRequest = async (userId) => {
   }
 };
 
-// Reject a connection request
+
 const rejectConnectionRequest = async (userId) => {
   try {
     const response = await api.post(`/connections/reject/${userId}`);
@@ -72,7 +72,7 @@ const rejectConnectionRequest = async (userId) => {
   }
 };
 
-// Remove a connection
+
 const removeConnection = async (userId) => {
   try {
     const response = await api.delete(`/connections/${userId}`);

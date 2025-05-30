@@ -19,18 +19,18 @@ const DashboardPage = () => {
   const [requestingUserId, setRequestingUserId] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
 
-  // Fetch feed when component mounts or when connections change
+  
   useEffect(() => {
     dispatch(fetchFeed({ page: 1, limit: 10 }));
   }, [dispatch]);
 
-  // Show success/error alert when connection action completes
+  
   useEffect(() => {
     if (actionSuccess || actionError) {
       setShowAlert(true);
       setRequestingUserId(null);
 
-      // Hide alert after 3 seconds
+      
       const timer = setTimeout(() => {
         setShowAlert(false);
       }, 3000);
@@ -39,16 +39,16 @@ const DashboardPage = () => {
     }
   }, [actionSuccess, actionError]);
 
-  // Refresh feed when user data changes (e.g., after sending a connection request)
+  
   useEffect(() => {
     if (user) {
       console.log('User data changed, refreshing feed');
-      // Refresh the feed to update the UI
+      
       dispatch(fetchFeed({ page: 1, limit: 10 }));
     }
   }, [user, dispatch]);
 
-  // Track users that have just been sent a request in this session
+  
   const [justSentRequests, setJustSentRequests] = useState([]);
 
   const handleSendRequest = (userId) => {
@@ -56,40 +56,40 @@ const DashboardPage = () => {
     dispatch(sendRequest(userId))
       .then((resultAction) => {
         if (sendRequest.fulfilled.match(resultAction)) {
-          // Add this user to the list of users that have just been sent a request
+          
           setJustSentRequests(prev => [...prev, userId]);
         }
       });
   };
 
-  // Check if user has sent a request to this user
+  
   const hasSentRequest = (userId) => {
-    // Check if the request was just sent in this session
+    
     if (justSentRequests.includes(userId)) {
       return true;
     }
-    // Check if the request is in the user's sentRequests array
+    
     if (!user || !user.sentRequests) return false;
     return user.sentRequests.some(request => request._id === userId);
   };
 
-  // Check if user is already connected with this user
+  
   const isConnected = (userId) => {
     if (!user || !user.connections) return false;
     return user.connections.some(connection => connection._id === userId);
   };
 
-  // Log user data for debugging
+  
   console.log('Current user data:', user);
   console.log('User connections:', user?.connections);
 
-  // Filter out connected users and transform user data for display
+  
   const feedUsers = users
     .filter(feedUser => {
-      // Don't show the current user in the feed
+      
       if (feedUser._id === user?._id) return false;
 
-      // On page refresh, filter out connected users
+      
       if (isConnected(feedUser._id)) {
         console.log(`Filtering out connected user: ${feedUser.name} (${feedUser._id})`);
         return false;

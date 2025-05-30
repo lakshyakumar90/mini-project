@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-// Use environment variable or fallback
+
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-// Create axios instance with credentials support
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
 
-// Register user
+
 const register = async (userData) => {
   try {
     const response = await api.post('/users/register', userData);
@@ -19,7 +19,7 @@ const register = async (userData) => {
   }
 };
 
-// Login user
+
 const login = async (email, password) => {
   try {
     const response = await api.post('/users/login', { email, password });
@@ -29,7 +29,7 @@ const login = async (email, password) => {
   }
 };
 
-// Logout user
+
 const logout = async () => {
   try {
     await api.get('/users/logout');
@@ -38,7 +38,7 @@ const logout = async () => {
   }
 };
 
-// Get current user profile
+
 const getCurrentUser = async () => {
   try {
     const response = await api.get('/users/profile');
@@ -48,7 +48,7 @@ const getCurrentUser = async () => {
   }
 };
 
-// Update user profile
+
 const updateProfile = async (userData) => {
   try {
     const response = await api.put('/users/profile', userData);
@@ -80,7 +80,7 @@ const getUserById = async (userId) => {
   }
 };
 
-// Forgot password - request reset token
+
 const forgotPassword = async (email) => {
   try {
     const response = await api.post('/users/forgotpassword', { email });
@@ -90,7 +90,7 @@ const forgotPassword = async (email) => {
   }
 };
 
-// Reset password with token
+
 const resetPassword = async (resetToken, password) => {
   try {
     const response = await api.put(`/users/resetpassword/${resetToken}`, { password });
