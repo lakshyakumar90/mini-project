@@ -1,6 +1,6 @@
 import { Suspense, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { motion } from 'motion/react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import lazyLoad, { preloadComponents } from '@/utils/lazyLoad';
@@ -10,14 +10,7 @@ const Sidebar = lazyLoad(() => import('./Sidebar'));
 const Navbar = lazyLoad(() => import('@/components/Navbar'));
 
 const MainLayout = () => {
-  const { isAuthenticated, loading } = useSelector((state) => state.auth);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, loading, navigate]);
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   // Preload layout components for better UX
   useEffect(() => {
@@ -25,12 +18,6 @@ const MainLayout = () => {
       preloadComponents([Navbar, Sidebar]);
     }
   }, [isAuthenticated]);
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!isAuthenticated) return null;
 
   return (
     <motion.div

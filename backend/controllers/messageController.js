@@ -10,12 +10,20 @@ const getMessages = async (req, res) => {
     const { userId } = req.params;
     const currentUserId = req.user._id;
 
+    // Validate userId
+    if (!userId || userId === currentUserId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
     // Find chat between these two users
-    const participants = [currentUserId.toString(), userId].sort();
+    const participants = [currentUserId.toString(), userId];
 
     // Get chat with pagination
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 50;
 
     // Find the chat between these users
     const chat = await Chat.findOne({
@@ -38,26 +46,28 @@ const getMessages = async (req, res) => {
     // Get total messages count
     const total = chat.messages.length;
 
-    // Apply pagination to messages
-    // Note: For MongoDB array slicing, we need to reverse the logic
-    // since we want the most recent messages
-    const startIdx = Math.max(0, total - (page * limit));
-    const endIdx = Math.max(0, total - ((page - 1) * limit));
+    // Sort messages by timestamp (oldest first for proper order)
+    const sortedMessages = chat.messages.sort((a, b) =>
+      new Date(a.timestamp) - new Date(b.timestamp)
+    );
 
-    // Get the messages for this page (in reverse order for most recent first)
-    const paginatedMessages = chat.messages
-      .slice(startIdx, endIdx)
-      .reverse();
+    // Apply pagination - get the most recent messages
+    const startIdx = Math.max(0, total - (page * limit));
+    const endIdx = total;
+
+    // Get the messages for this page
+    const paginatedMessages = sortedMessages.slice(startIdx, endIdx);
 
     // Format messages for the client
     const formattedMessages = paginatedMessages.map(msg => ({
       _id: msg._id,
       senderId: msg.senderId,
       text: msg.text,
-      timestamp: msg.timestamp
+      timestamp: msg.timestamp,
+      sender: msg.senderId // For compatibility
     }));
 
-    console.log('Sending messages to client:', formattedMessages);
+    console.log(`Sending ${formattedMessages.length} messages to client for chat with ${userId}`);
 
     res.status(200).json({
       success: true,
@@ -70,6 +80,7 @@ const getMessages = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error fetching messages:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -150,40 +161,8 @@ const sendMessage = async (req, res) => {
   }
 };
 
-// @desc    Get unread message count
-// @route   GET /api/messages/unread/count
-// @access  Private
-const getUnreadCount = async (req, res) => {
-  try {
-    const currentUserId = req.user._id;
-
-    // Find all chats where the current user is a participant
-    const chats = await Chat.find({
-      participants: currentUserId
-    });
-
-    // Count unread messages (messages not from the current user)
-    let unreadCount = 0;
-
-    // For each chat, count messages not from the current user
-    chats.forEach(chat => {
-      // We don't have a 'read' field in the new schema, so we'll need to implement
-      // that feature separately if needed. For now, we'll return 0.
-      unreadCount = 0;
-    });
-
-    res.status(200).json({
-      success: true,
-      unreadCount
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
 // Export all controller functions
 module.exports = {
   getMessages,
-  sendMessage,
-  getUnreadCount
+  sendMessage
 };

@@ -34,8 +34,14 @@ const initializeSocket = (server) => {
         // Handle sending messages
         socket.on('send_message', async (data) => {
             try {
-                const { sender, receiver, content, timestamp } = data;
+                const { sender, receiver, content, timestamp, _id } = data;
                 console.log(`Message sent from ${sender} to ${receiver}:`, content);
+
+                // Validate required fields
+                if (!sender || !receiver || !content) {
+                    console.log('Invalid message data:', data);
+                    return;
+                }
 
                 // Check if users are connected
                 const connection = await Connection.findOne({
@@ -47,17 +53,15 @@ const initializeSocket = (server) => {
 
                 if (!connection) {
                     console.log('Users are not connected, message rejected');
+                    socket.emit('message_error', { error: 'Users are not connected' });
                     return;
                 }
-
-                // Create a unique room ID using crypto
-                const room = getSecretRoomId(sender, receiver);
 
                 // Create a new message object
                 const newMessage = {
                     senderId: sender,
-                    text: content,
-                    timestamp: timestamp || new Date()
+                    text: content.trim(),
+                    timestamp: timestamp ? new Date(timestamp) : new Date()
                 };
 
                 // Find or create a chat between these users
@@ -83,24 +87,33 @@ const initializeSocket = (server) => {
                 await chat.save();
 
                 // Get the newly added message (last one in the array)
-                const message = chat.messages[chat.messages.length - 1];
+                const savedMessage = chat.messages[chat.messages.length - 1];
 
-                // We can emit to both the individual user's room and the chat room
-                console.log(`Emitting to room: ${receiver} and chat room: ${room}`);
-
-                // Create the message payload
+                // Create the message payload for the receiver
                 const messagePayload = {
-                    _id: message._id,
-                    senderId: message.senderId,
-                    text: message.text,
-                    timestamp: message.timestamp
+                    _id: savedMessage._id,
+                    senderId: savedMessage.senderId,
+                    text: savedMessage.text,
+                    timestamp: savedMessage.timestamp,
+                    sender: savedMessage.senderId // For compatibility
                 };
+
+                console.log(`Emitting message to receiver: ${receiver}`);
 
                 // Only emit to the recipient's room, not back to the sender
                 // This prevents duplicate messages
                 io.to(receiver).emit('receive_message', messagePayload);
+
+                // Confirm message sent to sender
+                socket.emit('message_sent', {
+                    _id: savedMessage._id,
+                    tempId: _id, // Original temp ID for frontend matching
+                    timestamp: savedMessage.timestamp
+                });
+
             } catch (err) {
                 console.error('Error in send_message handler:', err);
+                socket.emit('message_error', { error: 'Failed to send message' });
             }
         });
 

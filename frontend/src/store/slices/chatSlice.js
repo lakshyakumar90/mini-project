@@ -9,7 +9,7 @@ const initialState = {
   chatPartners: [],
   pagination: {
     page: 1,
-    limit: 20,
+    limit: 50,
     total: 0,
     pages: 0
   }
@@ -30,39 +30,36 @@ const chatSlice = createSlice({
         state.messages[chatId] = [];
       }
 
+      // Check for duplicate messages by ID or content+sender+time
       const messageExists = state.messages[chatId].some(msg => {
         if (!msg) return false;
+
+        // Check by ID first (most reliable)
         if (msg._id && message._id && msg._id === message._id) {
           return true;
         }
-        if (msg.content === message.content && msg.sender === message.sender) {
+
+        // Check by content, sender, and time (within 2 seconds)
+        if (msg.content === message.content &&
+            (msg.sender === message.sender || msg.senderId === message.senderId)) {
           const msgTime = new Date(msg.createdAt || msg.timestamp).getTime();
           const newMsgTime = new Date(message.createdAt || message.timestamp).getTime();
           const timeDiff = Math.abs(msgTime - newMsgTime);
-          if (timeDiff < 1000) {
-            return true;
-          }
+          return timeDiff < 2000; // 2 seconds tolerance
         }
+
         return false;
       });
 
       if (!messageExists) {
         state.messages[chatId].push(message);
-        if (Array.isArray(state.messages[chatId]) && state.messages[chatId].length > 1) {
-          state.messages[chatId].sort((a, b) => {
-            if (!a || !b) return 0;
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() :
-                         (a.timestamp ? new Date(a.timestamp).getTime() : 0);
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() :
-                         (b.timestamp ? new Date(b.timestamp).getTime() : 0);
-            if (timeA === timeB) {
-              const idTimeA = parseInt(a._id.split('-')[1], 10);
-              const idTimeB = parseInt(b._id.split('-')[1], 10);
-              return idTimeA - idTimeB;
-            }
-            return timeA - timeB;
-          });
-        }
+
+        // Sort messages by timestamp to maintain chronological order
+        state.messages[chatId].sort((a, b) => {
+          const timeA = new Date(a.createdAt || a.timestamp).getTime();
+          const timeB = new Date(b.createdAt || b.timestamp).getTime();
+          return timeA - timeB;
+        });
       }
     },
     setMessages: (state, action) => {
@@ -106,25 +103,29 @@ const chatSlice = createSlice({
 });
 
 // Action creators
-export const fetchMessages = ({ userId, page = 1, limit = 20 }) => async (dispatch) => {
+export const fetchMessages = ({ userId, page = 1, limit = 50 }) => async (dispatch) => {
   try {
     dispatch(setLoading(true));
     const response = await messageService.getMessages(userId, page, limit);
     if (response.success && response.messages) {
       const processedMessages = response.messages.map(msg => ({
         _id: msg._id,
-        sender: msg.senderId,
-        content: msg.text,
-        createdAt: msg.timestamp
+        sender: msg.senderId || msg.sender,
+        senderId: msg.senderId || msg.sender,
+        content: msg.text || msg.content,
+        createdAt: msg.timestamp,
+        timestamp: msg.timestamp
       }));
-      dispatch(setMessages({ 
-        chatId: userId, 
+      dispatch(setMessages({
+        chatId: userId,
         messages: processedMessages,
         pagination: response.pagination
       }));
     }
+    dispatch(setLoading(false));
   } catch (error) {
     dispatch(setError(error));
+    dispatch(setLoading(false));
   }
 };
 

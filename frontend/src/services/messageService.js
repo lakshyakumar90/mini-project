@@ -34,20 +34,9 @@ const sendMessage = async (userId, content) => {
 };
 
 
-const getUnreadCount = async () => {
-  try {
-    const response = await api.get('/messages/unread/count');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching unread count:', error);
-    throw error.response?.data?.message || 'Failed to fetch unread count';
-  }
-};
-
 const messageService = {
   getMessages,
   sendMessage,
-  getUnreadCount,
 };
 
 export default messageService;

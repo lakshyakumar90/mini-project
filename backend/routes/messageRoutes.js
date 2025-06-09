@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { 
-  getMessages, 
-  sendMessage, 
-  getUnreadCount 
+const {
+  getMessages,
+  sendMessage
 } = require('../controllers/messageController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -11,7 +10,6 @@ const { protect } = require('../middleware/authMiddleware');
 router.use(protect);
 
 // Message routes
-router.get('/unread/count', getUnreadCount);
 router.get('/:userId', getMessages);
 router.post('/:userId', sendMessage);
 

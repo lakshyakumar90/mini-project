@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { registerUser, clearError } from '@/store/slices/authSlice';
 import Navbar from '@/components/Navbar';
+import { getIntendedDestination, clearIntendedDestination } from '@/utils/redirectUtils';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
@@ -17,24 +18,27 @@ const SignupPage = () => {
   const { loading, error, isAuthenticated } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  
+  // Only redirect if user is already authenticated when component mounts
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      const destination = getIntendedDestination(searchParams);
+      clearIntendedDestination();
+      navigate(destination, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, searchParams]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    
+
     if ((name === 'password' || name === 'confirmPassword') && passwordError) {
       setPasswordError('');
     }
 
-    
+
     if (error) dispatch(clearError());
   };
 
@@ -42,7 +46,7 @@ const SignupPage = () => {
     e.preventDefault();
     const { name, email, password, confirmPassword } = formData;
 
-    
+
     if (password !== confirmPassword) {
       setPasswordError('Passwords do not match');
       return;
@@ -51,7 +55,9 @@ const SignupPage = () => {
     dispatch(registerUser({ name, email, password }))
       .then((resultAction) => {
         if (registerUser.fulfilled.match(resultAction)) {
-          navigate('/dashboard');
+          const destination = getIntendedDestination(searchParams);
+          clearIntendedDestination();
+          navigate(destination, { replace: true });
         }
       });
   };

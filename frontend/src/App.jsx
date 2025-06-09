@@ -6,6 +6,7 @@ import { Suspense, useEffect } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingSpinner from './components/LoadingSpinner';
 import RoutePreloader from './components/RoutePreloader';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Layout - Keep MainLayout non-lazy for better UX
 import MainLayout from './components/layout/MainLayout';
@@ -93,7 +94,7 @@ const App = () => {
             <Route path="/contact" element={<ContactPage />} />
 
             {/* Protected Routes */}
-            <Route element={<MainLayout />}>
+            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/user/:id" element={<UserProfilePage />} />
               <Route path="/profile" element={<ProfilePage />} />
