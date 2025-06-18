@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { motion, AnimatePresence } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -447,23 +446,14 @@ const ChatPage = () => {
 
       {/* Swipe Hint - Only shown on mobile for first-time users */}
       {showSwipeHint && isMobileView && selectedChat && !showSidebar && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg z-50 text-center"
-        >
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg z-50 text-center animate-in fade-in duration-300">
           <p className="text-sm">Swipe right to see contacts</p>
           <div className="flex justify-center mt-1">
-            <motion.div
-              animate={{ x: [0, 15, 0] }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-              className="text-white"
-            >
+            <div className="text-white animate-pulse">
               <ArrowLeft className="h-4 w-4" />
-            </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Responsive Layout Container */}
@@ -493,10 +483,9 @@ const ChatPage = () => {
                     if (!connection || !connection._id) return null;
 
                     return (
-                      <motion.div
+                      <div
                         key={connection._id}
-                        whileHover={{ scale: 1.02 }}
-                        className={`flex items-center space-x-4 p-2 rounded-lg cursor-pointer ${
+                        className={`flex items-center space-x-4 p-2 rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
                           activeChat === connection._id
                             ? "bg-primary/10"
                             : "hover:bg-accent"
@@ -521,7 +510,7 @@ const ChatPage = () => {
                               `Chat with ${connection.name || "this user"}`}
                           </p>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })
                 ) : (
@@ -589,7 +578,7 @@ const ChatPage = () => {
                           </p>
                         </div>
                       )}
-                      <AnimatePresence>
+                      <div>
                         {messages && activeChat && messages[activeChat] ? (
                           messages[activeChat].map((msg, index) => {
                             if (!msg) return null;
@@ -598,14 +587,11 @@ const ChatPage = () => {
                             const isSentByMe = senderId === user._id;
 
                             return (
-                              <motion.div
+                              <div
                                 key={msg._id || `msg-${index}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
                                 className={`flex ${
                                   isSentByMe ? "justify-end" : "justify-start"
-                                } w-full`}
+                                } w-full animate-in slide-in-from-bottom-2 duration-300`}
                               >
                                 <div
                                   className={`max-w-[70%] rounded-lg p-3 ${
@@ -623,7 +609,7 @@ const ChatPage = () => {
                                     )}
                                   </p>
                                 </div>
-                              </motion.div>
+                              </div>
                             );
                           })
                         ) : (
@@ -633,7 +619,7 @@ const ChatPage = () => {
                               : "No messages yet"}
                           </div>
                         )}
-                      </AnimatePresence>
+                      </div>
                       <div ref={messagesEndRef} />
                     </div>
                   </ScrollArea>

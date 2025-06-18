@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
 
@@ -8,11 +7,7 @@ const PrivacyPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <motion.main
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="container py-10 max-w-3xl w-full mx-auto"
-      >
+      <main className="container py-10 max-w-3xl w-full mx-auto animate-in fade-in duration-500">
         <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
 
         <div className="prose prose-neutral dark:prose-invert">
@@ -69,7 +64,7 @@ const PrivacyPage = () => {
             <Button variant="outline">Back to Home</Button>
           </Link>
         </div>
-      </motion.main>
+      </main>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { motion } from 'motion/react';
+import { Search } from 'lucide-react';
 import { logoutUser } from '@/store/slices/authSlice';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,21 +23,13 @@ const Navbar = () => {
   };
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-    >
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 animate-in slide-in-from-top duration-300">
       <div className="container flex h-14 items-center justify-between mx-auto">
-        <motion.div
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          className="font-bold text-xl"
-        >
+        <div className="font-bold text-xl transition-transform duration-200 hover:scale-110 active:scale-95">
           <Link to={isAuthenticated ? "/dashboard" : "/"}>
             DevTinder
           </Link>
-        </motion.div>
+        </div>
 
         <div className="flex items-center space-x-4">
           <ThemeToggle />
@@ -80,7 +72,7 @@ const Navbar = () => {
           )}
         </div>
       </div>
-    </motion.nav>
+    </nav>
   );
 };
 

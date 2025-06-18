@@ -1,24 +1,20 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
-import { Code, Users, Zap, Star, Globe, Shield, ArrowRight } from 'lucide-react';
-import ThemeToggle from '@/components/ThemeToggle';
+import { Code, Users, Search, Zap, Star, Globe, Shield, ArrowRight } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useSelector, useDispatch } from 'react-redux';
 import { useEffect } from 'react';
-import { getCurrentUser } from '@/store/slices/authSlice';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { isAuthenticated, loading } = useSelector((state) => state.auth);
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Check if user is authenticated
     if (isAuthenticated) {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
+
   const features = [
     {
       icon: Users,
@@ -26,9 +22,9 @@ const LandingPage = () => {
       description: 'Find and connect with like-minded developers worldwide.',
     },
     {
-      icon: Code,
-      title: 'Collaborate on Projects',
-      description: 'Discover exciting projects and collaborate with other developers.',
+      icon: Search,
+      title: 'Search Someone with Skills',
+      description: 'Search and connect with developers based on their skills and interests.',
     },
     {
       icon: Zap,
@@ -58,120 +54,53 @@ const LandingPage = () => {
     },
   ];
 
-  const benefits = [
-    {
-      icon: Star,
-      title: 'Skill Matching',
-      description: 'Our algorithm matches you with developers who complement your skill set.',
-    },
-    {
-      icon: Globe,
-      title: 'Global Network',
-      description: 'Connect with developers from around the world, expanding your professional network.',
-    },
-    {
-      icon: Shield,
-      title: 'Verified Profiles',
-      description: "All profiles are verified to ensure you're connecting with real developers.",
-    },
-  ];
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
       {/* Hero Section */}
       <section className="container py-20 w-full mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center space-y-6"
-        >
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight"
-          >
-            Connect. Collaborate. Code.
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="text-lg text-muted-foreground max-w-2xl mx-auto"
-          >
+        <div className="text-center space-y-6 animate-in fade-in duration-700">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight animate-in slide-in-from-bottom-4 duration-700">
+            Connect. Chat. Improve.
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-in slide-in-from-bottom-2 duration-700 delay-200">
             Join the community of developers where networking meets collaboration.
             Find your next coding partner or project team today.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.6 }}
-            whileHover={{ scale: 1.05 }}
-          >
+          </p>
+          <div className="animate-in slide-in-from-bottom-2 duration-700 delay-400">
             <Link to="/signup">
-              <Button size="lg" className="mt-4">
+              <Button size="lg" className="mt-4 transform transition hover:scale-105">
                 Get Started
               </Button>
             </Link>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Features Section */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid md:grid-cols-3 gap-8 mt-20"
-        >
-          {features.map((feature) => (
-            <motion.div
+        <div className="grid md:grid-cols-3 gap-8 mt-20 animate-in fade-in duration-700 delay-500">
+          {features.map((feature, index) => (
+            <div
               key={feature.title}
-              variants={itemVariants}
-              whileHover={{ y: -5, transition: { duration: 0.2 } }}
-              className="flex flex-col items-center text-center space-y-4 p-6 border rounded-lg shadow-sm"
+              className={`flex flex-col items-center text-center space-y-4 p-6 border rounded-lg shadow-sm animate-in slide-in-from-bottom-4 duration-500 delay-${600 + index * 100} hover:-translate-y-1 transition-transform`}
             >
               <feature.icon className="h-12 w-12 text-primary" />
               <h2 className="text-xl font-semibold">{feature.title}</h2>
               <p className="text-muted-foreground">{feature.description}</p>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </section>
 
       {/* How It Works Section */}
       <section className="py-20 bg-muted/30">
         <div className="container w-full mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
+          <div className="text-center mb-16 animate-in slide-in-from-bottom-4 duration-700">
             <h2 className="text-3xl font-bold mb-4">How It Works</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               DevTinder makes it easy to find your perfect coding match in just a few simple steps.
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
@@ -179,18 +108,14 @@ const LandingPage = () => {
               { step: '02', title: 'Browse Developers', description: 'Explore profiles of developers who match your criteria and project needs.' },
               { step: '03', title: 'Connect & Collaborate', description: 'Send connection requests and start collaborating on exciting projects.' },
             ].map((item, index) => (
-              <motion.div
+              <div
                 key={item.step}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="relative p-6 border rounded-lg bg-background"
+                className={`relative p-6 border rounded-lg bg-background animate-in slide-in-from-bottom-4 duration-500 delay-${index * 100}`}
               >
                 <div className="text-5xl font-bold text-primary/20 absolute right-4 top-4">{item.step}</div>
                 <h3 className="text-xl font-semibold mb-3 mt-6">{item.title}</h3>
                 <p className="text-muted-foreground">{item.description}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -199,28 +124,18 @@ const LandingPage = () => {
       {/* Testimonials Section */}
       <section className="py-20">
         <div className="container w-full mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
+          <div className="text-center mb-16 animate-in slide-in-from-bottom-4 duration-700">
             <h2 className="text-3xl font-bold mb-4">Developer Success Stories</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Hear from developers who found their perfect match on DevTinder.
             </p>
-          </motion.div>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <motion.div
+              <div
                 key={testimonial.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="p-6 border rounded-lg bg-background"
+                className={`p-6 border rounded-lg bg-background animate-in slide-in-from-bottom-4 duration-500 delay-${index * 100}`}
               >
                 <div className="flex items-center mb-4">
                   <img
@@ -234,42 +149,7 @@ const LandingPage = () => {
                   </div>
                 </div>
                 <p className="text-muted-foreground italic">"{testimonial.content}"</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="container w-full mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl font-bold mb-4">Why Choose DevTinder</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Our platform offers unique benefits designed specifically for developers.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {benefits.map((benefit, index) => (
-              <motion.div
-                key={benefit.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="p-6 border rounded-lg bg-background"
-              >
-                <benefit.icon className="h-10 w-10 text-primary mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{benefit.title}</h3>
-                <p className="text-muted-foreground">{benefit.description}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -278,24 +158,18 @@ const LandingPage = () => {
       {/* CTA Section */}
       <section className="py-20">
         <div className="container w-full mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center p-10 border rounded-lg bg-primary/5 max-w-4xl mx-auto"
-          >
+          <div className="text-center p-10 border rounded-lg bg-primary/5 max-w-4xl mx-auto animate-in slide-in-from-bottom-4 duration-700">
             <h2 className="text-3xl font-bold mb-4">Ready to Find Your Coding Match?</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
               Join thousands of developers already connecting and collaborating on exciting projects.
             </p>
             <Link to="/signup">
-              <Button size="lg" className="group">
+              <Button size="lg" className="group transform transition hover:scale-105">
                 Get Started Today
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </motion.div>
+          </div>
         </div>
       </section>
 
@@ -309,9 +183,6 @@ const LandingPage = () => {
               </Link>
               <Link to="/privacy" className="hover:text-foreground">
                 Privacy Policy
-              </Link>
-              <Link to='/contact' className="hover:text-foreground">
-                Contact Us
               </Link>
             </div>
           </div>

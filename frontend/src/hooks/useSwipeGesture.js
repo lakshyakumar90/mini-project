@@ -1,13 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-/**
- * A hook to detect swipe gestures on touch devices
- * @param {Function} onSwipeLeft - Callback for left swipe
- * @param {Function} onSwipeRight - Callback for right swipe
- * @param {number} threshold - Minimum distance for a swipe (px)
- * @param {number} timeout - Maximum time for a swipe (ms)
- * @returns {Object} - Ref to attach to the element
- */
 const useSwipeGesture = (
   onSwipeLeft = () => {},
   onSwipeRight = () => {},

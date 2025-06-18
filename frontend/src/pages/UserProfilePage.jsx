@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { motion } from 'motion/react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -53,11 +52,7 @@ const UserProfilePage = () => {
         <h1 className="text-3xl font-bold">Developer Profile</h1>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="animate-in fade-in duration-500">
         <Card className="overflow-hidden">
           <div className="h-40 bg-gradient-to-r from-primary/20 to-primary/40"></div>
           <div className="relative px-6">
@@ -104,7 +99,7 @@ const UserProfilePage = () => {
             </div>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 };

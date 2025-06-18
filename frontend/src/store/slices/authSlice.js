@@ -7,10 +7,6 @@ const initialState = {
   isAuthenticated: false,
   loading: false,
   error: null,
-  passwordResetSuccess: false,
-  passwordResetToken: null,
-  passwordResetError: null,
-  passwordResetLoading: false,
 };
 
 const authSlice = createSlice({
@@ -45,20 +41,6 @@ const authSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
-    },
-    
-    // Password reset states
-    setPasswordResetState: (state, action) => {
-      state.passwordResetSuccess = action.payload.success || false;
-      state.passwordResetToken = action.payload.token || null;
-      state.passwordResetError = action.payload.error || null;
-      state.passwordResetLoading = action.payload.loading || false;
-    },
-    clearPasswordResetState: (state) => {
-      state.passwordResetSuccess = false;
-      state.passwordResetToken = null;
-      state.passwordResetError = null;
-      state.passwordResetLoading = false;
     },
     
     // Profile update
@@ -118,42 +100,6 @@ export const updateUserProfile = (userData) => async (dispatch) => {
   }
 };
 
-export const forgotPasswordRequest = (email) => async (dispatch) => {
-  try {
-    dispatch(setPasswordResetState({ loading: true }));
-    const response = await authService.forgotPassword(email);
-    dispatch(setPasswordResetState({ 
-      success: true, 
-      loading: false 
-    }));
-    return response;
-  } catch (error) {
-    dispatch(setPasswordResetState({ 
-      error: error, 
-      loading: false 
-    }));
-    throw error;
-  }
-};
-
-export const resetPasswordWithToken = ({ resetToken, password }) => async (dispatch) => {
-  try {
-    dispatch(setPasswordResetState({ loading: true }));
-    const response = await authService.resetPassword(resetToken, password);
-    dispatch(setPasswordResetState({ 
-      success: true, 
-      loading: false 
-    }));
-    return response;
-  } catch (error) {
-    dispatch(setPasswordResetState({ 
-      error: error, 
-      loading: false 
-    }));
-    throw error;
-  }
-};
-
 export const getCurrentUser = () => async (dispatch) => {
   try {
     dispatch(setLoading(true));
@@ -172,8 +118,6 @@ export const {
   setLoading,
   setError,
   clearError,
-  setPasswordResetState,
-  clearPasswordResetState,
   updateUserProfile: updateUserProfileAction
 } = authSlice.actions;
 

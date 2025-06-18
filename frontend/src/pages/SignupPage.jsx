@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { registerUser, clearError } from '@/store/slices/authSlice';
 import Navbar from '@/components/Navbar';
@@ -67,12 +66,7 @@ const SignupPage = () => {
       <Navbar />
 
       <div className="container flex items-center justify-center py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md space-y-6 p-8 border rounded-lg shadow-sm"
-        >
+        <div className="w-full max-w-md space-y-6 p-8 border rounded-lg shadow-sm animate-in fade-in duration-500">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Create an Account</h1>
             <p className="text-muted-foreground mt-2">
@@ -82,13 +76,9 @@ const SignupPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-3 rounded-md bg-red-50 text-red-500 text-sm"
-              >
+              <div className="p-3 rounded-md bg-red-50 text-red-500 text-sm animate-in slide-in-from-top-2 duration-300">
                 {error}
-              </motion.div>
+              </div>
             )}
 
             <div className="space-y-2">
@@ -175,7 +165,7 @@ const SignupPage = () => {
               Sign in
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

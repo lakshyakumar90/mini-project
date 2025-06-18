@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { motion } from 'motion/react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -49,21 +48,6 @@ const ConnectionsPage = () => {
     dispatch(removeExistingConnection(userId));
   };
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-      },
-    },
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 },
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -98,18 +82,13 @@ const ConnectionsPage = () => {
       )}
 
       {connections && connections.length > 0 && (
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-        >
-          {connections.map((connection) => {
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-500">
+          {connections.map((connection, index) => {
             
             if (!connection || !connection._id) return null;
 
             return (
-              <motion.div key={connection._id} variants={item}>
+              <div key={connection._id} className={`animate-in slide-in-from-bottom-4 duration-500 delay-${index * 100}`}>
                 <Card>
                   <CardHeader className="text-center">
                     <Link to={`/user/${connection._id}`}>
@@ -159,23 +138,19 @@ const ConnectionsPage = () => {
                     </Button>
                   </CardFooter>
                 </Card>
-              </motion.div>
+              </div>
             );
           })}
-      </motion.div>
+      </div>
       )}
 
       {(!connections || !Array.isArray(connections) || connections.length === 0) && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-12"
-        >
+        <div className="text-center py-12 animate-in fade-in duration-500">
           <p className="text-muted-foreground">You don't have any connections yet.</p>
           <p className="text-muted-foreground mt-2">
             Browse the <Link to="/dashboard" className="text-primary hover:underline">Developer Network</Link> to find people to connect with.
           </p>
-        </motion.div>
+        </div>
       )}
     </div>
   );

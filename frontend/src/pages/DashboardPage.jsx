@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { motion } from 'motion/react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -107,21 +106,6 @@ const DashboardPage = () => {
       timestamp: user.timestamp,
     }));
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2,
-      },
-    },
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 },
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -159,14 +143,11 @@ const DashboardPage = () => {
           <p className="text-muted-foreground">No developers found in your network yet.</p>
         </div>
       ) : (
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="show"
+        <div
           className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
         >
           {feedUsers.map((user) => (
-          <motion.div key={user.id} variants={item}>
+          <div key={user.id}>
             <Card className="h-full flex flex-col">
               <CardHeader className="text-center">
                 <Link to={`/user/${user.id}`} className="hover:opacity-80 transition-opacity">
@@ -240,9 +221,9 @@ const DashboardPage = () => {
                 )}
               </CardFooter>
             </Card>
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
       )}
     </div>
   );

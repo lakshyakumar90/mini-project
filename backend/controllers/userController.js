@@ -288,73 +288,74 @@ const logout = (req, res) => {
   });
 };
 
-
-
-// @desc    Forgot password - generate token and send email
-// @route   POST /api/users/forgotpassword
-// @access  Public
-const forgotPassword = async (req, res) => {
+// @desc    Search users by name or skills
+// @route   GET /api/users/search
+// @access  Private
+const searchUsers = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { query, page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'No user with that email' });
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Search query is required' 
+      });
     }
 
-    // Generate reset token
-    const resetToken = user.createPasswordResetToken();
-    await user.save({ validateBeforeSave: false });
+    // Get all connections for the current user
+    const connections = await Connection.find({
+      $or: [
+        { requester: req.user._id, status: 'accepted' },
+        { recipient: req.user._id, status: 'accepted' }
+      ]
+    });
 
-    // In a real application, you would send an email with the reset link
-    // For this project, we'll just return the token in the response
-    // The reset URL would be: ${req.protocol}://${req.get('host')}/resetpassword/${resetToken}
+    // Extract IDs of connected users
+    const connectedUserIds = connections.map(connection => {
+      return connection.requester.toString() === req.user._id.toString()
+        ? connection.recipient
+        : connection.requester;
+    });
+
+    // Add the current user's ID to the exclusion list
+    const excludedIds = [req.user._id, ...connectedUserIds];
+
+    // Create search criteria for name and skills
+    const searchCriteria = {
+      _id: { $nin: excludedIds },
+      $or: [
+        { name: { $regex: query.trim(), $options: 'i' } }, // Case-insensitive name search
+        { skills: { $elemMatch: { $regex: query.trim(), $options: 'i' } } } // Case-insensitive skills search
+      ]
+    };
+
+    // Find users matching the search criteria
+    const users = await User.find(searchCriteria)
+      .select('name email bio skills profilePicture role githubUrl linkedinUrl')
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ name: 1 }); // Sort by name alphabetically
+
+    // Get total count for pagination
+    const total = await User.countDocuments(searchCriteria);
 
     res.status(200).json({
       success: true,
-      message: 'Password reset token generated',
-      resetToken // In production, you wouldn't return this directly
+      users,
+      query: query.trim(),
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Reset password
-// @route   PUT /api/users/resetpassword/:resetToken
-// @access  Public
-const resetPassword = async (req, res) => {
-  try {
-    const { password } = req.body;
-    const { resetToken } = req.params;
-
-    // Hash the token from params
-    const hashedToken = require('crypto')
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-
-    // Find user by token and check if token is still valid
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() }
+    res.status(400).json({ 
+      success: false, 
+      message: error.message 
     });
-
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
-    }
-
-    // Set new password and clear reset fields
-    user.password = password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    await user.save();
-
-    // Send token response with cookie
-    sendTokenResponse(user, 200, res);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -367,6 +368,5 @@ module.exports = {
   updateProfile,
   getAllUsers,
   getUserById,
-  forgotPassword,
-  resetPassword
+  searchUsers
 };

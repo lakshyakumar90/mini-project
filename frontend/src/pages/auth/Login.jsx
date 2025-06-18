@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { loginStart, loginSuccess, loginFailure } from '@/store/slices/authSlice'
 import axios from 'axios'
 
@@ -31,22 +30,13 @@ const Login = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
-    >
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-500">
       <div className="max-w-md w-full space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
+        <div className="animate-in slide-in-from-bottom-4 duration-500">
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Sign in to your account
           </h2>
-        </motion.div>
+        </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
@@ -82,25 +72,19 @@ const Login = () => {
           </div>
 
           {error && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-500 text-sm text-center"
-            >
+            <div className="text-red-500 text-sm text-center animate-in slide-in-from-top-2 duration-300">
               {error}
-            </motion.div>
+            </div>
           )}
 
           <div>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform transition hover:scale-105"
             >
               {loading ? 'Signing in...' : 'Sign in'}
-            </motion.button>
+            </button>
           </div>
 
           <div className="text-sm text-center">
@@ -113,7 +97,7 @@ const Login = () => {
           </div>
         </form>
       </div>
-    </motion.div>
+    </div>
   )
 }
 

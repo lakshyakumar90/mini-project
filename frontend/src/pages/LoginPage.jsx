@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { loginUser, clearError } from '@/store/slices/authSlice';
 import Navbar from '@/components/Navbar';
@@ -51,12 +50,7 @@ const LoginPage = () => {
       <Navbar />
 
       <div className="container flex items-center justify-center py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-sm"
-        >
+        <div className="w-full max-w-md space-y-8 p-8 border rounded-lg shadow-sm animate-in fade-in duration-500">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Welcome Back</h1>
             <p className="text-muted-foreground mt-2">
@@ -66,13 +60,9 @@ const LoginPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-3 rounded-md bg-red-50 text-red-500 text-sm"
-              >
+              <div className="p-3 rounded-md bg-red-50 text-red-500 text-sm animate-in fade-in duration-300">
                 {error}
-              </motion.div>
+              </div>
             )}
 
             <div className="space-y-2">
@@ -96,12 +86,6 @@ const LoginPage = () => {
                 <label htmlFor="password" className="text-sm font-medium">
                   Password
                 </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-sm text-primary hover:underline"
-                >
-                  Forgot password?
-                </Link>
               </div>
               <input
                 id="password"
@@ -130,7 +114,7 @@ const LoginPage = () => {
               Sign up
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

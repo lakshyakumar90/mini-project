@@ -80,27 +80,16 @@ const getUserById = async (userId) => {
   }
 };
 
-
-const forgotPassword = async (email) => {
+const searchUsers = async (query, page = 1, limit = 10) => {
   try {
-    const response = await api.post('/users/forgotpassword', { email });
+    const response = await api.get(`/users/search?query=${encodeURIComponent(query)}&page=${page}&limit=${limit}`);
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || 'Failed to process password reset request';
+    throw error.response?.data?.message || 'Failed to search users';
   }
 };
 
-
-const resetPassword = async (resetToken, password) => {
-  try {
-    const response = await api.put(`/users/resetpassword/${resetToken}`, { password });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data?.message || 'Failed to reset password';
-  }
-};
-
-const authService = {
+const userService = {
   register,
   login,
   logout,
@@ -108,9 +97,8 @@ const authService = {
   updateProfile,
   getFeed,
   getUserById,
-  forgotPassword,
-  resetPassword,
+  searchUsers,
 };
 
-export default authService;
+export default userService;
 

@@ -8,8 +8,7 @@ const {
   updateProfile,
   getAllUsers,
   getUserById,
-  forgotPassword,
-  resetPassword
+  searchUsers
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -17,8 +16,6 @@ const { protect } = require('../middleware/authMiddleware');
 router.post('/register', register);
 router.post('/login', login);
 router.get('/logout', logout);
-router.post('/forgotpassword', forgotPassword);
-router.put('/resetpassword/:resetToken', resetPassword);
 
 // Protected routes (authentication required)
 router.use(protect); // Apply protection middleware to all routes below this line
@@ -26,6 +23,7 @@ router.use(protect); // Apply protection middleware to all routes below this lin
 router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
 router.get('/feed', getAllUsers);
+router.get('/search', searchUsers);
 router.get('/:id', getUserById);
 
 module.exports = router;

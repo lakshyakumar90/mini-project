@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Home, ArrowLeft } from 'lucide-react';
 
@@ -15,30 +14,20 @@ const NotFoundPage = () => {
       </nav>
 
       <div className="flex-1 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center max-w-md px-4"
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
-            className="text-9xl font-bold text-primary/20 mb-4"
-          >
+        <div className="text-center max-w-md px-4 animate-in fade-in duration-500">
+          <div className="text-9xl font-bold text-primary/20 mb-4 animate-in zoom-in duration-700 delay-200">
             404
-          </motion.div>
+          </div>
           
-          <h1 className="text-3xl font-bold mb-4">Page Not Found</h1>
+          <h1 className="text-3xl font-bold mb-4 animate-in slide-in-from-bottom-2 duration-500 delay-300">Page Not Found</h1>
           
-          <p className="text-muted-foreground mb-8">
+          <p className="text-muted-foreground mb-8 animate-in slide-in-from-bottom-2 duration-500 delay-400">
             The page you are looking for doesn't exist or has been moved.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in slide-in-from-bottom-2 duration-500 delay-500">
             <Link to="/">
-              <Button className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto transform transition hover:scale-105">
                 <Home className="mr-2 h-4 w-4" />
                 Go to Home
               </Button>
@@ -46,14 +35,14 @@ const NotFoundPage = () => {
             
             <Button 
               variant="outline" 
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto transform transition hover:scale-105"
               onClick={() => window.history.back()}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back
             </Button>
           </div>
-        </motion.div>
+        </div>
       </div>
       
       <footer className="border-t py-6">
