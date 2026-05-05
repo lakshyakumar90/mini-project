@@ -42,6 +42,15 @@ const getConnectionRequests = async () => {
   }
 };
 
+const getSentRequests = async () => {
+  try {
+    const response = await api.get('/connections/sent');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || 'Failed to fetch sent requests';
+  }
+};
+
 
 const sendConnectionRequest = async (userId) => {
   try {
@@ -85,6 +94,7 @@ const removeConnection = async (userId) => {
 const connectionService = {
   getConnections,
   getConnectionRequests,
+  getSentRequests,
   sendConnectionRequest,
   acceptConnectionRequest,
   rejectConnectionRequest,

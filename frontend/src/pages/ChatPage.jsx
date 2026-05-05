@@ -460,7 +460,7 @@ const ChatPage = () => {
       <div className="flex flex-1 gap-4 min-h-0">
         {/* Sidebar - Hidden on mobile when a chat is selected */}
         {(showSidebar || !isMobileView) && (
-          <Card className="w-full md:w-80 flex-shrink-0">
+          <Card className="w-full md:w-80 shrink-0">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Messages</CardTitle>
               {isMobileView && selectedChat && (
@@ -529,7 +529,7 @@ const ChatPage = () => {
             {selectedChat ? (
               <>
                 {/* Fixed Header - Hidden on mobile when we show the top bar */}
-                <CardHeader className="border-b py-4 flex-shrink-0 hidden md:block">
+                <CardHeader className="border-b py-4 shrink-0 hidden md:block">
                   <div className="flex items-center space-x-4">
                     <Avatar>
                       <AvatarImage
@@ -570,7 +570,7 @@ const ChatPage = () => {
                     className="h-full"
                     onScroll={handleScroll}
                   >
-                    <div className="space-y-4 p-4 pb-6">
+                    <div className="space-y-3 p-4 pb-6">
                       {isLoadingMore && (
                         <div className="text-center py-2">
                           <p className="text-sm text-muted-foreground">
@@ -589,25 +589,27 @@ const ChatPage = () => {
                             return (
                               <div
                                 key={msg._id || `msg-${index}`}
-                                className={`flex ${
+                                className={`flex py-1 ${
                                   isSentByMe ? "justify-end" : "justify-start"
                                 } w-full animate-in slide-in-from-bottom-2 duration-300`}
                               >
                                 <div
-                                  className={`max-w-[70%] rounded-lg p-3 ${
+                                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm ${
                                     isSentByMe
                                       ? "bg-primary text-primary-foreground"
                                       : "bg-muted"
                                   }`}
                                 >
-                                  <p className="text-sm break-words">
+                                  <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
                                     {msg.content}
                                   </p>
-                                  <p className="text-xs mt-1 opacity-70">
-                                    {formatMessageTime(
-                                      msg.createdAt || msg.timestamp
-                                    )}
-                                  </p>
+                                  <div
+                                    className={`mt-1 text-xs opacity-70 ${
+                                      isSentByMe ? "text-right" : "text-left"
+                                    }`}
+                                  >
+                                    {formatMessageTime(msg.createdAt || msg.timestamp)}
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -626,7 +628,7 @@ const ChatPage = () => {
                 </div>
 
                 {/* Fixed Footer/Input Area */}
-                <div className="p-2 sm:p-4 border-t flex-shrink-0">
+                <div className="p-2 sm:p-4 border-t shrink-0">
                   <form onSubmit={handleSendMessage} className="flex space-x-2">
                     <Input
                       value={message}

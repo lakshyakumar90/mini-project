@@ -303,23 +303,9 @@ const searchUsers = async (req, res) => {
       });
     }
 
-    // Get all connections for the current user
-    const connections = await Connection.find({
-      $or: [
-        { requester: req.user._id, status: 'accepted' },
-        { recipient: req.user._id, status: 'accepted' }
-      ]
-    });
-
-    // Extract IDs of connected users
-    const connectedUserIds = connections.map(connection => {
-      return connection.requester.toString() === req.user._id.toString()
-        ? connection.recipient
-        : connection.requester;
-    });
-
-    // Add the current user's ID to the exclusion list
-    const excludedIds = [req.user._id, ...connectedUserIds];
+    // Only exclude the current user from search results.
+    // Search is meant to be a global directory, so excluding connections makes it feel "broken".
+    const excludedIds = [req.user._id];
 
     // Create search criteria for name and skills
     const searchCriteria = {

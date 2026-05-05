@@ -8,14 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import userService from '@/services/userService';
-import { sendRequest } from '@/store/slices/connectionSlice';
+import { refreshNetworkState, sendRequest } from '@/store/slices/connectionSlice';
 
 const SearchPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useSelector((state) => state.auth);
-  const { actionSuccess, actionError } = useSelector((state) => state.connections);  // Local state
+  const { actionSuccess, actionError, connections, sentRequests } = useSelector((state) => state.connections);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -57,13 +56,16 @@ const SearchPage = () => {
       setShowAlert(true);
       setRequestingUserId(null);
 
+      // Ensure global UI reflects latest connection/sent states.
+      dispatch(refreshNetworkState());
+
       const timer = setTimeout(() => {
         setShowAlert(false);
       }, 3000);
 
       return () => clearTimeout(timer);
     }
-  }, [actionSuccess, actionError]);
+  }, [actionSuccess, actionError, dispatch]);
 
   const handleSearch = useCallback(async (query, page = 1) => {
     if (!query.trim()) return;
@@ -102,13 +104,13 @@ const SearchPage = () => {
   };
 
   const hasSentRequest = (userId) => {
-    if (!user || !user.sentRequests) return false;
-    return user.sentRequests.some(request => request._id === userId);
+    if (!sentRequests || !Array.isArray(sentRequests)) return false;
+    return sentRequests.some((u) => u?._id === userId);
   };
 
   const isConnected = (userId) => {
-    if (!user || !user.connections) return false;
-    return user.connections.some(connection => connection._id === userId);
+    if (!connections || !Array.isArray(connections)) return false;
+    return connections.some((u) => u?._id === userId);
   };
   const handleClearSearch = () => {
     setSearchQuery('');

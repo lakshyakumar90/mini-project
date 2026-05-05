@@ -1,6 +1,6 @@
-# Backend API for Mini Project
+# DevConnect API
 
-This is the backend server for the Mini Project application, built with Node.js, Express, and MongoDB.
+This is the backend server for DevConnect, built with Node.js, Express, and MongoDB.
 
 ## Features
 

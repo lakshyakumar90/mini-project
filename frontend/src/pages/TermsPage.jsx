@@ -14,7 +14,7 @@ const TermsPage = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using DevTinder, you agree to be bound by these Terms
+              By accessing and using DevConnect, you agree to be bound by these Terms
               of Service and all applicable laws and regulations. If you do not
               agree with any of these terms, you are prohibited from using or
               accessing this platform.
@@ -44,7 +44,7 @@ const TermsPage = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">4. Intellectual Property</h2>
             <p>
-              Users retain ownership of their content but grant DevTinder a license
+              Users retain ownership of their content but grant DevConnect a license
               to use, display, and distribute content shared on the platform. Users
               must respect intellectual property rights and not share copyrighted
               material without permission.
@@ -54,7 +54,7 @@ const TermsPage = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">5. Termination</h2>
             <p>
-              DevTinder reserves the right to terminate or suspend accounts that
+              DevConnect reserves the right to terminate or suspend accounts that
               violate these terms or engage in harmful behavior. Users may also
               terminate their accounts at any time.
             </p>

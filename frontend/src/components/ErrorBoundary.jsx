@@ -32,7 +32,7 @@ class ErrorBoundary extends Component {
           <nav className="container flex h-14 items-center">
             <Link to="/">
               <Button variant="ghost" className="font-bold text-xl">
-                DevTinder
+                DevConnect
               </Button>
             </Link>
           </nav>
@@ -68,7 +68,7 @@ class ErrorBoundary extends Component {
           
           <footer className="border-t py-6 mt-auto">
             <div className="container text-center text-sm text-muted-foreground">
-              © {new Date().getFullYear()} DevTinder. All rights reserved.
+              © {new Date().getFullYear()} DevConnect. All rights reserved.
             </div>
           </footer>
         </div>

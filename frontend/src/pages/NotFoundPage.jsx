@@ -8,7 +8,7 @@ const NotFoundPage = () => {
       <nav className="container flex h-14 items-center">
         <Link to="/">
           <Button variant="ghost" className="font-bold text-xl">
-            DevTinder
+            DevConnect
           </Button>
         </Link>
       </nav>
@@ -48,7 +48,7 @@ const NotFoundPage = () => {
       <footer className="border-t py-6">
         <div className="container">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="font-bold text-xl mb-4 md:mb-0">DevTinder</div>
+            <div className="font-bold text-xl mb-4 md:mb-0">DevConnect</div>
             <div className="flex space-x-6 text-sm text-muted-foreground">
               <Link to="/terms" className="hover:text-foreground">
                 Terms of Service

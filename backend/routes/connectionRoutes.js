@@ -5,6 +5,7 @@ const {
   acceptConnectionRequest, 
   rejectConnectionRequest, 
   getConnectionRequests, 
+  getSentRequests,
   getConnections,
   removeConnection
 } = require('../controllers/connectionController');
@@ -18,6 +19,7 @@ router.post('/request/:userId', sendConnectionRequest);
 router.post('/accept/:userId', acceptConnectionRequest);
 router.post('/reject/:userId', rejectConnectionRequest);
 router.get('/requests', getConnectionRequests);
+router.get('/sent', getSentRequests);
 
 // Connections management
 router.get('/', getConnections);

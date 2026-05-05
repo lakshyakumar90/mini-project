@@ -143,6 +143,25 @@ const getConnectionRequests = async (req, res) => {
   }
 };
 
+// @desc    Get sent connection requests
+// @route   GET /api/connections/sent
+// @access  Private
+const getSentRequests = async (req, res) => {
+  try {
+    const sentRequests = await Connection.find({
+      requester: req.user._id,
+      status: 'pending'
+    }).populate('recipient', 'name email bio skills profilePicture');
+
+    res.status(200).json({
+      success: true,
+      requests: sentRequests.map(request => request.recipient)
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Get all connections
 // @route   GET /api/connections
 // @access  Private
@@ -211,6 +230,7 @@ module.exports = {
   acceptConnectionRequest,
   rejectConnectionRequest,
   getConnectionRequests,
+  getSentRequests,
   getConnections,
   removeConnection
 };

@@ -27,7 +27,7 @@ const Navbar = () => {
       <div className="container flex h-14 items-center justify-between mx-auto">
         <div className="font-bold text-xl transition-transform duration-200 hover:scale-110 active:scale-95">
           <Link to={isAuthenticated ? "/dashboard" : "/"}>
-            DevTinder
+            DevConnect
           </Link>
         </div>
 

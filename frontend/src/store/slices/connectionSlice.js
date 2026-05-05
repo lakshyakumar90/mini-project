@@ -1,7 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
 import connectionService from '@/services/connectionService';
-import { getCurrentUser } from './authSlice';
-
 const initialState = {
   connections: [],
   pendingRequests: [],
@@ -100,12 +98,32 @@ export const fetchConnectionRequests = () => async (dispatch) => {
   }
 };
 
+export const fetchSentRequests = () => async (dispatch) => {
+  try {
+    dispatch(setLoading(true));
+    const response = await connectionService.getSentRequests();
+    dispatch(setSentRequests(response.requests || []));
+    dispatch(setLoading(false));
+  } catch (error) {
+    dispatch(setError(error));
+  }
+};
+
+export const refreshNetworkState = () => async (dispatch) => {
+  await Promise.allSettled([
+    dispatch(fetchConnections()),
+    dispatch(fetchConnectionRequests()),
+    dispatch(fetchSentRequests()),
+  ]);
+};
+
 export const sendRequest = (userId) => async (dispatch) => {
   try {
     dispatch(setActionLoading(true));
-    const response = await connectionService.sendConnectionRequest(userId);
+    await connectionService.sendConnectionRequest(userId);
     dispatch(setActionSuccess('Connection request sent successfully'));
-    dispatch(getCurrentUser());
+    // Keep network state in sync so UI can show "Request Sent" immediately.
+    dispatch(fetchSentRequests());
   } catch (error) {
     dispatch(setActionError(error));
   }
@@ -118,6 +136,7 @@ export const acceptRequest = (userId) => async (dispatch) => {
     dispatch(setActionSuccess('Connection request accepted'));
     dispatch(fetchConnections());
     dispatch(fetchConnectionRequests());
+    dispatch(fetchSentRequests());
   } catch (error) {
     dispatch(setActionError(error));
   }

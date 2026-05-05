@@ -1,8 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Code, Users, Search, Zap, Star, Globe, Shield, ArrowRight } from 'lucide-react';
+import { Users, Search, Zap, ArrowRight, Mail } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useEffect } from 'react';
 
 const LandingPage = () => {
@@ -18,39 +18,18 @@ const LandingPage = () => {
   const features = [
     {
       icon: Users,
-      title: 'Connect with Developers',
-      description: 'Find and connect with like-minded developers worldwide.',
+      title: 'Build your network',
+      description: 'Connect with developers you actually want to work with.',
     },
     {
       icon: Search,
-      title: 'Search Someone with Skills',
-      description: 'Search and connect with developers based on their skills and interests.',
+      title: 'Search by skills',
+      description: 'Find people by stacks, roles, and interests in seconds.',
     },
     {
       icon: Zap,
-      title: 'Real-time Chat',
-      description: 'Instant messaging to discuss ideas and share knowledge.',
-    },
-  ];
-
-  const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'Frontend Developer',
-      avatar: 'https://randomuser.me/api/portraits/women/32.jpg',
-      content: "DevTinder helped me find the perfect collaborator for my React project. The platform is intuitive and the connections I've made are invaluable.",
-    },
-    {
-      name: 'Michael Chen',
-      role: 'Full Stack Engineer',
-      avatar: 'https://randomuser.me/api/portraits/men/46.jpg',
-      content: 'I was looking for a backend developer to complement my skills, and within a week of joining DevTinder, I found the perfect match!',
-    },
-    {
-      name: 'Priya Patel',
-      role: 'UI/UX Designer',
-      avatar: 'https://randomuser.me/api/portraits/women/65.jpg',
-      content: "As a designer, finding developers who appreciate good design is crucial. DevTinder's community is full of talented professionals who value collaboration.",
+      title: 'Real-time messaging',
+      description: 'Start conversations instantly and keep momentum.',
     },
   ];
 
@@ -58,115 +37,135 @@ const LandingPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="container py-20 w-full mx-auto">
-        <div className="text-center space-y-6 animate-in fade-in duration-700">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight animate-in slide-in-from-bottom-4 duration-700">
-            Connect. Chat. Improve.
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-in slide-in-from-bottom-2 duration-700 delay-200">
-            Join the community of developers where networking meets collaboration.
-            Find your next coding partner or project team today.
-          </p>
-          <div className="animate-in slide-in-from-bottom-2 duration-700 delay-400">
-            <Link to="/signup">
-              <Button size="lg" className="mt-4 transform transition hover:scale-105">
-                Get Started
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Features Section */}
-        <div className="grid md:grid-cols-3 gap-8 mt-20 animate-in fade-in duration-700 delay-500">
-          {features.map((feature, index) => (
-            <div
-              key={feature.title}
-              className={`flex flex-col items-center text-center space-y-4 p-6 border rounded-lg shadow-sm animate-in slide-in-from-bottom-4 duration-500 delay-${600 + index * 100} hover:-translate-y-1 transition-transform`}
-            >
-              <feature.icon className="h-12 w-12 text-primary" />
-              <h2 className="text-xl font-semibold">{feature.title}</h2>
-              <p className="text-muted-foreground">{feature.description}</p>
+      {/* Hero */}
+      <section className="container w-full mx-auto py-16 sm:py-20">
+        <div className="grid gap-10 lg:grid-cols-12 items-center">
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center rounded-full border px-3 py-1 text-sm text-muted-foreground">
+              DevConnect · Professional developer networking
             </div>
-          ))}
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
+              Find collaborators, not swipes.
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl">
+              A clean, focused platform to discover developers by skills, connect with intent,
+              and chat in real-time.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link to="/signup">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Get started
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                  Sign in
+                </Button>
+              </Link>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Built for teams, hackathons, open-source, and side projects.
+            </div>
+          </div>
+
+          <div className="lg:col-span-5">
+            <div className="border rounded-2xl p-6 sm:p-8 bg-card">
+              <div className="space-y-4">
+                <div className="text-sm font-medium text-muted-foreground">What you can do</div>
+                <ul className="space-y-3 text-sm">
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
+                    Create a profile with skills and links
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
+                    Search developers by name or stack
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
+                    Connect and message instantly
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="container w-full mx-auto">
-          <div className="text-center mb-16 animate-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              DevTinder makes it easy to find your perfect coding match in just a few simple steps.
+      {/* Features */}
+      <section className="border-t">
+        <div className="container w-full mx-auto py-14 sm:py-16">
+          <div className="flex flex-col gap-3 mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold">Designed to stay focused</h2>
+            <p className="text-muted-foreground max-w-2xl">
+              Modern UI, clear actions, and fast workflows—without noise.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {features.map((feature) => (
+              <div key={feature.title} className="border rounded-2xl p-6 bg-card">
+                <feature.icon className="h-6 w-6 text-primary" />
+                <h3 className="mt-4 font-semibold text-lg">{feature.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="border-t">
+        <div className="container w-full mx-auto py-14 sm:py-16">
+          <div className="flex flex-col gap-3 mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold">How it works</h2>
+            <p className="text-muted-foreground max-w-2xl">
+              Simple steps from profile to collaboration.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid gap-6 md:grid-cols-3">
             {[
-              { step: '01', title: 'Create Your Profile', description: 'Sign up and showcase your skills, experience, and project interests.' },
-              { step: '02', title: 'Browse Developers', description: 'Explore profiles of developers who match your criteria and project needs.' },
-              { step: '03', title: 'Connect & Collaborate', description: 'Send connection requests and start collaborating on exciting projects.' },
-            ].map((item, index) => (
-              <div
-                key={item.step}
-                className={`relative p-6 border rounded-lg bg-background animate-in slide-in-from-bottom-4 duration-500 delay-${index * 100}`}
-              >
-                <div className="text-5xl font-bold text-primary/20 absolute right-4 top-4">{item.step}</div>
-                <h3 className="text-xl font-semibold mb-3 mt-6">{item.title}</h3>
-                <p className="text-muted-foreground">{item.description}</p>
+              {
+                step: '01',
+                title: 'Create your profile',
+                description: 'Show your skills, interests, and what you want to build.',
+              },
+              {
+                step: '02',
+                title: 'Search & connect',
+                description: 'Discover developers by name, role, or stack and send a request.',
+              },
+              {
+                step: '03',
+                title: 'Chat and build',
+                description: 'Message instantly to align on ideas and start collaborating.',
+              },
+            ].map((item) => (
+              <div key={item.step} className="border rounded-2xl p-6 bg-card">
+                <div className="text-sm font-medium text-muted-foreground">{item.step}</div>
+                <h3 className="mt-3 font-semibold text-lg">{item.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20">
-        <div className="container w-full mx-auto">
-          <div className="text-center mb-16 animate-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-3xl font-bold mb-4">Developer Success Stories</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Hear from developers who found their perfect match on DevTinder.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={testimonial.name}
-                className={`p-6 border rounded-lg bg-background animate-in slide-in-from-bottom-4 duration-500 delay-${index * 100}`}
-              >
-                <div className="flex items-center mb-4">
-                  <img
-                    src={testimonial.avatar}
-                    alt={testimonial.name}
-                    className="w-12 h-12 rounded-full mr-4"
-                  />
-                  <div>
-                    <h3 className="font-semibold">{testimonial.name}</h3>
-                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                  </div>
-                </div>
-                <p className="text-muted-foreground italic">"{testimonial.content}"</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20">
-        <div className="container w-full mx-auto">
-          <div className="text-center p-10 border rounded-lg bg-primary/5 max-w-4xl mx-auto animate-in slide-in-from-bottom-4 duration-700">
-            <h2 className="text-3xl font-bold mb-4">Ready to Find Your Coding Match?</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
-              Join thousands of developers already connecting and collaborating on exciting projects.
-            </p>
+      {/* CTA */}
+      <section className="border-t">
+        <div className="container w-full mx-auto py-14 sm:py-16">
+          <div className="border rounded-2xl p-8 sm:p-10 bg-card flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <h2 className="text-2xl sm:text-3xl font-bold">Ready to collaborate?</h2>
+              <p className="text-muted-foreground max-w-2xl">
+                Create your profile and start connecting with developers today.
+              </p>
+            </div>
             <Link to="/signup">
-              <Button size="lg" className="group transform transition hover:scale-105">
-                Get Started Today
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              <Button size="lg">
+                Create an account
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -176,18 +175,25 @@ const LandingPage = () => {
       <footer className="border-t py-8 mt-10">
         <div className="container w-full mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <Link to="/" className="font-bold text-xl mb-4 md:mb-0">DevTinder</Link>
-            <div className="flex space-x-6 text-sm text-muted-foreground">
+            <Link to="/" className="font-bold text-xl mb-4 md:mb-0">DevConnect</Link>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <Link to="/terms" className="hover:text-foreground">
                 Terms of Service
               </Link>
               <Link to="/privacy" className="hover:text-foreground">
                 Privacy Policy
               </Link>
+              <a
+                href="mailto:devtinder93@gmail.com"
+                className="hover:text-foreground inline-flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                devtinder93@gmail.com
+              </a>
             </div>
           </div>
           <div className="text-center text-sm text-muted-foreground mt-8">
-            © {new Date().getFullYear()} DevTinder. All rights reserved.
+            © {new Date().getFullYear()} DevConnect. All rights reserved.
           </div>
         </div>
       </footer>
