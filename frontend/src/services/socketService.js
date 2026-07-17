@@ -3,7 +3,21 @@ import { addRealtimeNotification } from '@/store/slices/notificationSlice';
 import { setUserStatus, setTypingStatus } from '@/store/slices/presenceSlice';
 import { addMessage, updateMessageStatus, markChatMessagesRead } from '@/store/slices/chatSlice';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3333';
+const getSocketUrl = () => {
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL;
+  }
+  if (import.meta.env.VITE_API_URL) {
+    const url = import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '');
+    if (url && url !== '' && url !== '/') return url;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return window.location.origin;
+  }
+  return 'http://localhost:3333';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 let socket = null;
 let currentUserId = null;
@@ -43,10 +57,13 @@ const socketService = {
 
     currentUserId = userId;
     socket = io(SOCKET_URL, {
+      path: '/socket.io/',
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 20,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       withCredentials: true,
+      transports: ['polling', 'websocket'],
     });
 
     socket.on('connect', () => {

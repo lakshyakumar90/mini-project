@@ -208,6 +208,31 @@ const sendMessage = async (req, res) => {
     // Get the newly added message (last one in the array)
     const message = chat.messages[chat.messages.length - 1];
 
+    // Emit receive_message over socket to the receiver for real-time delivery when sent via API
+    try {
+      const socketUtil = require('../utils/socket');
+      const io = socketUtil.getIO();
+      if (io) {
+        const messagePayload = {
+          _id: message._id,
+          senderId: message.senderId,
+          text: message.text,
+          timestamp: message.timestamp,
+          sender: message.senderId,
+          status: message.status || initialStatus
+        };
+        io.to(userId.toString()).emit('receive_message', messagePayload);
+        io.to(currentUserId.toString()).emit('message_sent', {
+          _id: message._id,
+          tempId: req.body.tempId || req.body._id || message._id,
+          timestamp: message.timestamp,
+          status: message.status || initialStatus
+        });
+      }
+    } catch (socketEmitErr) {
+      console.warn('Could not emit real-time message from controller:', socketEmitErr.message);
+    }
+
     res.status(201).json({
       success: true,
       message: {

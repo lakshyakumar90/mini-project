@@ -22,10 +22,15 @@ const localPresenceMap = new Map(); // userId -> { status: 'online', socketIds: 
 
 const initializeSocket = (server) => {
     const io = socket(server, {
+        path: '/socket.io/',
         cors: {
-            origin: process.env.FRONTEND_URL,
+            origin: (origin, callback) => callback(null, true),
             credentials: true,
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
         },
+        transports: ['polling', 'websocket'],
+        pingTimeout: 60000,
+        pingInterval: 25000,
     });
     ioInstance = io;
 
