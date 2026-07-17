@@ -28,7 +28,7 @@ const initializeSocket = (server) => {
             credentials: true,
             methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
         },
-        transports: ['polling', 'websocket'],
+        transports: ['websocket', 'polling'],
         pingTimeout: 60000,
         pingInterval: 25000,
     });
@@ -104,19 +104,32 @@ const initializeSocket = (server) => {
         socket.on('get_users_status', async (userIds = [], callback) => {
             if (typeof callback !== 'function') return;
             const statusMap = {};
-            for (const id of userIds) {
+            const validIds = Array.isArray(userIds) ? userIds.filter(id => id && (typeof id === 'string' || typeof id === 'object')) : [];
+            const redisIds = [];
+
+            for (const rawId of validIds) {
+                const id = rawId.toString();
                 const local = localPresenceMap.get(id);
                 if (local && local.status === 'online' && local.socketIds.size > 0) {
                     statusMap[id] = 'online';
                 } else {
-                    try {
-                        const redisStatus = await redisClient.hget('user_presence', id);
-                        statusMap[id] = redisStatus || 'offline';
-                    } catch (e) {
-                        statusMap[id] = 'offline';
-                    }
+                    redisIds.push(id);
                 }
             }
+
+            if (redisIds.length > 0 && redisClient) {
+                try {
+                    const redisStatuses = await redisClient.hmget('user_presence', ...redisIds);
+                    redisIds.forEach((id, idx) => {
+                        statusMap[id] = redisStatuses[idx] || 'offline';
+                    });
+                } catch (e) {
+                    redisIds.forEach(id => {
+                        statusMap[id] = 'offline';
+                    });
+                }
+            }
+
             callback(statusMap);
         });
 

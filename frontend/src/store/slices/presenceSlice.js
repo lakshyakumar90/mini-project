@@ -21,7 +21,13 @@ const presenceSlice = createSlice({
     },
     setUsersStatusMap: (state, action) => {
       if (action.payload && typeof action.payload === 'object') {
-        state.onlineUsers = { ...state.onlineUsers, ...action.payload };
+        let changed = false;
+        for (const [userId, status] of Object.entries(action.payload)) {
+          if (state.onlineUsers[userId] !== status) {
+            state.onlineUsers[userId] = status;
+            changed = true;
+          }
+        }
       }
     },
     setTypingStatus: (state, action) => {

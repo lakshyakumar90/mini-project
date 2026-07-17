@@ -89,7 +89,16 @@ const chatSlice = createSlice({
       }
     },
     setChatPartners: (state, action) => {
-      state.chatPartners = action.payload;
+      if (Array.isArray(action.payload)) {
+        if (
+          state.chatPartners &&
+          state.chatPartners.length === action.payload.length &&
+          state.chatPartners.every((item, idx) => item?._id === action.payload[idx]?._id)
+        ) {
+          return;
+        }
+        state.chatPartners = action.payload;
+      }
     },
     clearChat: (state, action) => {
       const chatId = action.payload;

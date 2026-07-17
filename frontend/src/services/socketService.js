@@ -22,6 +22,7 @@ const SOCKET_URL = getSocketUrl();
 let socket = null;
 let currentUserId = null;
 let activeChatId = null;
+let isConnecting = false;
 
 const socketService = {
   setActiveChatId: (chatId) => {
@@ -47,15 +48,17 @@ const socketService = {
 
   connect: (userId, dispatch) => {
     if (!userId) return null;
-    if (socket && socket.connected && currentUserId === userId) {
+    if (socket && (socket.connected || isConnecting || !socket.disconnected) && currentUserId === userId) {
       return socket;
     }
 
     if (socket) {
       socket.disconnect();
+      socket = null;
     }
 
     currentUserId = userId;
+    isConnecting = true;
     socket = io(SOCKET_URL, {
       path: '/socket.io/',
       reconnection: true,
@@ -63,15 +66,25 @@ const socketService = {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       withCredentials: true,
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
     });
 
     socket.on('connect', () => {
+      isConnecting = false;
       console.log('✅ Global socket connected/reconnected:', socket.id);
       socket.emit('register_user', userId);
       if (activeChatId) {
         socket.emit('join_chat', { userId, targetUserId: activeChatId });
       }
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn('⚠️ Socket connect_error:', err.message);
+    });
+
+    socket.on('disconnect', (reason) => {
+      isConnecting = false;
+      console.log('🔌 Socket disconnected:', reason);
     });
 
     // Listeners for Notifications
@@ -180,6 +193,7 @@ const socketService = {
       socket = null;
       currentUserId = null;
       activeChatId = null;
+      isConnecting = false;
     }
   }
 };

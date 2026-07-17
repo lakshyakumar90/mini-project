@@ -19,7 +19,7 @@ const MainLayout = () => {
     return () => {
       // Keep socket connected while user navigates between layout routes
     };
-  }, [user, dispatch]);
+  }, [user?._id, dispatch]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-x-hidden w-full">

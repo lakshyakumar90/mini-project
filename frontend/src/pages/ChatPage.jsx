@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +25,92 @@ import { setUsersStatusMap } from "@/store/slices/presenceSlice";
 import userService from "@/services/userService";
 import messageService from "@/services/messageService";
 
+const PeerChannelItem = memo(({ connection, isOnline, isTyping, isSelected, onSelect }) => {
+  return (
+    <div
+      className={`flex items-center gap-3 p-2.5 rounded-[8px] cursor-pointer transition-all ${
+        isSelected
+          ? "bg-primary/10 border border-primary/20"
+          : "hover:bg-secondary/70 border border-transparent"
+      }`}
+      onClick={() => onSelect(connection)}
+    >
+      <div className="relative shrink-0">
+        <Avatar className="w-10 h-10 border border-border">
+          <AvatarImage src={connection.profilePicture} alt={connection.name || "User"} />
+          <AvatarFallback className="bg-secondary font-semibold text-xs text-foreground">
+            {connection.name?.[0] || "U"}
+          </AvatarFallback>
+        </Avatar>
+        <span
+          className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${
+            isOnline ? "bg-[#16a34a]" : "bg-muted-foreground/40"
+          }`}
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <p className="text-xs sm:text-sm font-satoshi font-semibold truncate text-foreground">
+            {connection.name || "Unknown User"}
+          </p>
+        </div>
+        {isTyping ? (
+          <p className="text-[11px] text-[#2563eb] font-geist animate-pulse">Typing...</p>
+        ) : (
+          <p className="text-[11px] text-muted-foreground truncate font-geist">
+            {connection.bio || `Chat with ${connection.name || "peer"}`}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+});
+
+PeerChannelItem.displayName = "PeerChannelItem";
+
+const MessageBubble = memo(({ msg, isSentByMe, showDateDivider, msgDateStr, formatMessageTime, renderStatusTicks }) => {
+  return (
+    <div className="w-full space-y-2">
+      {showDateDivider && msgDateStr && (
+        <div className="flex justify-center my-3 w-full">
+          <span className="px-3.5 py-1 rounded-full bg-secondary/80 border border-border/80 text-muted-foreground text-[11px] font-satoshi font-medium shadow-subtle backdrop-blur-sm select-none">
+            {msgDateStr}
+          </span>
+        </div>
+      )}
+      <div
+        className={`flex ${isSentByMe ? "justify-end" : "justify-start"} w-full animate-in slide-in-from-bottom-2 duration-200`}
+      >
+        <div
+          className={`max-w-[85%] sm:max-w-[70%] rounded-[12px] px-3.5 py-2 shadow-subtle relative ${
+            isSentByMe
+              ? "bg-[#2563eb] text-white"
+              : "bg-secondary border border-border text-foreground"
+          }`}
+        >
+          <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-inter pr-12 sm:pr-14">
+            {msg.content}
+          </p>
+          <div
+            className={`flex items-center justify-end gap-1 mt-1 -mb-0.5 text-[10px] font-geist select-none ${
+              isSentByMe ? "text-blue-100/90" : "text-muted-foreground/80"
+            }`}
+          >
+            <span>{formatMessageTime(msg.createdAt || msg.timestamp)}</span>
+            {isSentByMe && (
+              <span className="inline-flex items-center ml-0.5" title={`Status: ${msg.status || 'sent'}`}>
+                {renderStatusTicks(msg.status || 'sent')}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+MessageBubble.displayName = "MessageBubble";
+
 const ChatPage = () => {
   const dispatch = useDispatch();
   const location = useLocation();
@@ -39,7 +125,6 @@ const ChatPage = () => {
   const { onlineUsers, typingMap, lastSeenMap } = useSelector((state) => state.presence);
 
   const [message, setMessage] = useState("");
-  const socketRef = useRef(null); // use ref not state so socket changes never trigger re-render
   const [selectedChat, setSelectedChat] = useState(null);
   const [extraPartners, setExtraPartners] = useState([]);
   const [chatError, setChatError] = useState(null);
@@ -108,11 +193,15 @@ const ChatPage = () => {
     return Array.from(map.values());
   }, [connections, chatPartners, extraPartners, selectedChat]);
 
-  // Request online status whenever allPartners change
+  const partnerIdsStr = useMemo(() => {
+    return (allPartners || []).map(c => c && c._id).filter(Boolean).sort().join(',');
+  }, [allPartners]);
+
+  // Request online status whenever unique partner IDs actually change
   useEffect(() => {
     const s = getSocket();
-    if (allPartners && Array.isArray(allPartners) && allPartners.length > 0 && s && s.connected) {
-      const ids = allPartners.map(c => c._id).filter(Boolean);
+    if (partnerIdsStr && s && s.connected) {
+      const ids = partnerIdsStr.split(',').filter(Boolean);
       if (ids.length > 0) {
         s.emit('get_users_status', ids, (statusMap) => {
           if (statusMap) {
@@ -121,21 +210,17 @@ const ChatPage = () => {
         });
       }
     }
-  }, [allPartners, dispatch, getSocket]);
+  }, [partnerIdsStr, dispatch, getSocket]);
 
-  // Connect socket — run whenever user changes, but socketService.connect() is idempotent:
-  // it returns the existing socket if already connected for the same userId.
   useEffect(() => {
-    if (user && user._id) {
-      socketRef.current = socketService.connect(user._id, dispatch);
+    if (allPartners && allPartners.length > 0) {
+      dispatch(setChatPartners(allPartners));
     }
-  }, [user?._id, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [partnerIdsStr, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     try {
       if (allPartners && allPartners.length > 0) {
-        dispatch(setChatPartners(allPartners));
-
         const setupChatWithConnection = (connection) => {
           if (!connection || !connection._id) return;
 
@@ -545,43 +630,14 @@ const ChatPage = () => {
                     const isSelected = activeChat === connection._id;
 
                     return (
-                      <div
+                      <PeerChannelItem
                         key={connection._id}
-                        className={`flex items-center gap-3 p-2.5 rounded-[8px] cursor-pointer transition-all ${
-                          isSelected
-                            ? "bg-primary/10 border border-primary/20"
-                            : "hover:bg-secondary/70 border border-transparent"
-                        }`}
-                        onClick={() => handleSelectChat(connection)}
-                      >
-                        <div className="relative shrink-0">
-                          <Avatar className="w-10 h-10 border border-border">
-                            <AvatarImage src={connection.profilePicture} alt={connection.name || "User"} />
-                            <AvatarFallback className="bg-secondary font-semibold text-xs text-foreground">
-                              {connection.name?.[0] || "U"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span
-                            className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${
-                              isOnline ? "bg-[#16a34a]" : "bg-muted-foreground/40"
-                            }`}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs sm:text-sm font-satoshi font-semibold truncate text-foreground">
-                              {connection.name || "Unknown User"}
-                            </p>
-                          </div>
-                          {isTyping ? (
-                            <p className="text-[11px] text-[#2563eb] font-geist animate-pulse">Typing...</p>
-                          ) : (
-                            <p className="text-[11px] text-muted-foreground truncate font-geist">
-                              {connection.bio || `Chat with ${connection.name || "peer"}`}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                        connection={connection}
+                        isOnline={isOnline}
+                        isTyping={isTyping}
+                        isSelected={isSelected}
+                        onSelect={handleSelectChat}
+                      />
                     );
                   })
                 ) : (
@@ -678,42 +734,15 @@ const ChatPage = () => {
                         }
 
                         return (
-                          <div key={msg._id || `msg-${index}`} className="w-full space-y-2">
-                            {showDateDivider && msgDateStr && (
-                              <div className="flex justify-center my-3 w-full">
-                                <span className="px-3.5 py-1 rounded-full bg-secondary/80 border border-border/80 text-muted-foreground text-[11px] font-satoshi font-medium shadow-subtle backdrop-blur-sm select-none">
-                                  {msgDateStr}
-                                </span>
-                              </div>
-                            )}
-                            <div
-                              className={`flex ${isSentByMe ? "justify-end" : "justify-start"} w-full animate-in slide-in-from-bottom-2 duration-200`}
-                            >
-                              <div
-                                className={`max-w-[85%] sm:max-w-[70%] rounded-[12px] px-3.5 py-2 shadow-subtle relative ${
-                                  isSentByMe
-                                    ? "bg-[#2563eb] text-white"
-                                    : "bg-secondary border border-border text-foreground"
-                                }`}
-                              >
-                                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-inter pr-12 sm:pr-14">
-                                  {msg.content}
-                                </p>
-                                <div
-                                  className={`flex items-center justify-end gap-1 mt-1 -mb-0.5 text-[10px] font-geist select-none ${
-                                    isSentByMe ? "text-blue-100/90" : "text-muted-foreground/80"
-                                  }`}
-                                >
-                                  <span>{formatMessageTime(msg.createdAt || msg.timestamp)}</span>
-                                  {isSentByMe && (
-                                    <span className="inline-flex items-center ml-0.5" title={`Status: ${msg.status || 'sent'}`}>
-                                      {renderStatusTicks(msg.status || 'sent')}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                          <MessageBubble
+                            key={msg._id || `msg-${index}`}
+                            msg={msg}
+                            isSentByMe={isSentByMe}
+                            showDateDivider={showDateDivider}
+                            msgDateStr={msgDateStr}
+                            formatMessageTime={formatMessageTime}
+                            renderStatusTicks={renderStatusTicks}
+                          />
                         );
                       })
                     ) : (
