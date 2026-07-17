@@ -7,6 +7,8 @@ const http = require('http');
 const path = require('path');
 const initializeSocket = require("./utils/socket");
 const app = express();
+// Trust first proxy (required for express-rate-limit when running behind reverse proxies like Render)
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 
 
