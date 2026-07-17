@@ -1,35 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Check, X, Loader2 } from 'lucide-react';
+import { Check, X, Loader2, UserCheck, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { fetchConnectionRequests, acceptRequest, rejectRequest } from '@/store/slices/connectionSlice';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const RequestsPage = () => {
   const dispatch = useDispatch();
-  const { pendingRequests, loading, error, actionLoading, actionError, actionSuccess } = useSelector((state) => state.connections);
-  console.log('Pending requests:', pendingRequests);
+  const { pendingRequests, loading, error, actionSuccess, actionError } = useSelector((state) => state.connections);
 
   const [processingId, setProcessingId] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
 
-  // Fetch connection requests on component mount
   useEffect(() => {
     dispatch(fetchConnectionRequests());
   }, [dispatch]);
 
-  // Log the pending requests for debugging
-  console.log('Pending requests in component:', pendingRequests);
-
-  // Show success/error alert when connection action completes
   useEffect(() => {
     if (actionSuccess || actionError) {
       setShowAlert(true);
       setProcessingId(null);
 
-      // Hide alert after 3 seconds
       const timer = setTimeout(() => {
         setShowAlert(false);
       }, 3000);
@@ -50,96 +41,135 @@ const RequestsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="dub-card p-16 max-w-[1100px] mx-auto flex flex-col justify-center items-center space-y-3 text-muted-foreground my-6">
+        <Loader2 className="animate-spin h-8 w-8 text-[#2563eb]" />
+        <p className="text-xs font-geist">Loading pending network requests...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <p className="text-destructive">Error loading requests: {error}</p>
+      <div className="dub-card p-8 max-w-[1100px] mx-auto bg-red-500/10 border border-red-500/20 text-red-500 text-center text-sm my-6">
+        Error loading requests: {error}
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Connection Requests</h1>
-        <span className="text-sm text-muted-foreground">
-          {pendingRequests.length} pending requests
-        </span>
+    <div className="max-w-[1100px] mx-auto py-6 px-4 font-inter space-y-8 animate-fade-bg-in">
+      {/* Header Banner */}
+      <div className="dub-card-paper p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-border">
+        <div className="space-y-1">
+          <span className="dub-pill text-[11px] py-0.5 px-2.5">
+            <span className="w-2 h-2 rounded-full bg-[#f59e0b]"></span> Inbound Network Invitations
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-satoshi font-semibold text-foreground tracking-tight">
+            Connection Requests
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed">
+            Review incoming connection proposals from verified engineers across the platform. Accepted peers gain access to mutual messaging and private collaboration channels.
+          </p>
+        </div>
+        <div className="dub-pill py-1.5 px-4 bg-secondary text-foreground font-satoshi font-semibold text-sm shrink-0">
+          {pendingRequests ? pendingRequests.length : 0} Pending
+        </div>
       </div>
 
       {showAlert && (
-        <Alert className={actionError ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
-          <AlertDescription className={actionError ? "text-red-700" : "text-green-700"}>
-            {actionError || actionSuccess}
-          </AlertDescription>
-        </Alert>
+        <div className={`p-4 rounded-[12px] border text-xs sm:text-sm ${actionError ? "bg-red-500/10 border-red-500/20 text-red-500" : "bg-green-500/10 border-green-500/20 text-[#16a34a]"}`}>
+          {actionError || actionSuccess}
+        </div>
       )}
 
-      <div className="grid gap-6 animate-in fade-in duration-500">
-        {pendingRequests.map((request, index) => (
-          <div
-            key={request._id}
-            className={`animate-in slide-in-from-bottom-4 duration-500 delay-${index * 100}`}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex items-center space-x-4">
-                  <Avatar>
-                    <AvatarImage src={request.profilePicture} alt={request.name} />
-                    <AvatarFallback>{request.name?.[0]}</AvatarFallback>
+      {pendingRequests && pendingRequests.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {pendingRequests.map((request) => (
+            <div
+              key={request._id}
+              className="dub-card p-5 flex flex-col justify-between space-y-4 group"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <Link to={`/user/${request._id}`} className="flex items-center gap-3.5">
+                  <Avatar className="w-12 h-12 rounded-full border border-border shrink-0">
+                    <AvatarImage src={request.profilePicture} alt={request.name || 'User'} />
+                    <AvatarFallback className="bg-secondary text-foreground font-semibold text-sm">
+                      {request.name?.[0] || 'U'}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-lg">{request.name}</CardTitle>
-                    <CardDescription>{request.skills?.join(', ') || 'Developer'}</CardDescription>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-satoshi font-semibold text-base text-foreground group-hover:text-[#2563eb] transition-colors">
+                        {request.name || 'Developer'}
+                      </h3>
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#2563eb]" />
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{request.role || 'Verified Engineer'}</p>
                   </div>
+                </Link>
+              </div>
+
+              {request.bio && (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                  {request.bio}
+                </p>
+              )}
+
+              {request.skills && Array.isArray(request.skills) && request.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {request.skills.slice(0, 4).map((skill, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded-[4px] bg-secondary border border-border text-[11px] font-geist text-foreground">
+                      {skill}
+                    </span>
+                  ))}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-sm">{request.bio || `${request.name} wants to connect with you.`}</p>
-              </CardContent>
-              <CardFooter className="justify-end space-x-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="space-x-2 text-destructive transform transition hover:scale-105"
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+                <button
+                  className="dub-btn-outline text-xs py-1.5 px-4 text-red-500 hover:bg-red-500/10 border-red-500/20 flex items-center gap-1.5"
                   onClick={() => handleRejectRequest(request._id)}
                   disabled={processingId === request._id}
                 >
                   {processingId === request._id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   )}
                   <span>{processingId === request._id ? 'Declining...' : 'Decline'}</span>
-                </Button>
-                <Button
-                  size="sm"
-                  className="space-x-2 transform transition hover:scale-105"
+                </button>
+                <button
+                  className="dub-btn-primary text-xs py-1.5 px-5 flex items-center gap-1.5"
                   onClick={() => handleAcceptRequest(request._id)}
                   disabled={processingId === request._id}
                 >
                   {processingId === request._id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Check className="h-4 w-4" />
+                    <Check className="h-3.5 w-3.5" />
                   )}
-                  <span>{processingId === request._id ? 'Accepting...' : 'Accept'}</span>
-                </Button>
-              </CardFooter>
-            </Card>
+                  <span>{processingId === request._id ? 'Accepting...' : 'Accept Request'}</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="dub-card p-16 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-secondary border border-border mx-auto flex items-center justify-center text-muted-foreground">
+            <UserCheck className="w-6 h-6 text-[#2563eb]" />
           </div>
-        ))}
-      </div>
-
-      {pendingRequests.length === 0 && (
-        <div className="text-center py-12 animate-in fade-in duration-500">
-          <p className="text-muted-foreground">No pending connection requests</p>
+          <div className="space-y-1">
+            <h3 className="font-satoshi font-semibold text-lg text-foreground">No Pending Invitations</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+              Your inbound connection request inbox is currently clean. Check out the Developer Directory to connect with others.
+            </p>
+          </div>
+          <Link to="/search">
+            <button className="dub-btn-primary text-xs py-2 px-4 mt-2">
+              Discover Peers
+            </button>
+          </Link>
         </div>
       )}
     </div>

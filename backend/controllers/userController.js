@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Connection = require('../models/Connection');
 const jwt = require('jsonwebtoken');
+const { getFileUrl, resolveImageUrl } = require('../middleware/upload');
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -157,7 +158,19 @@ const getProfile = async (req, res) => {
 // @access  Private
 const updateProfile = async (req, res) => {
   try {
-    const { name, bio, skills, githubUrl, linkedinUrl } = req.body;
+    const {
+      name,
+      bio,
+      skills,
+      githubUrl,
+      linkedinUrl,
+      profilePicture,
+      coverImage,
+      location,
+      openToCollab,
+      pinnedProjects,
+      techStack
+    } = req.body;
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -165,44 +178,99 @@ const updateProfile = async (req, res) => {
     }
 
     // Update fields
-    if (name) user.name = name;
+    if (name !== undefined) user.name = name;
     if (bio !== undefined) user.bio = bio;
-    if (skills) user.skills = skills;
+    if (skills !== undefined) user.skills = skills;
     if (githubUrl !== undefined) user.githubUrl = githubUrl;
     if (linkedinUrl !== undefined) user.linkedinUrl = linkedinUrl;
+    if (profilePicture !== undefined) user.profilePicture = profilePicture;
+    if (coverImage !== undefined) user.coverImage = coverImage;
+    if (location !== undefined) user.location = location;
+    if (openToCollab !== undefined) user.openToCollab = openToCollab;
+    if (pinnedProjects !== undefined) user.pinnedProjects = pinnedProjects;
+    if (techStack !== undefined) user.techStack = techStack;
 
     const updatedUser = await user.save();
 
     res.status(200).json({
       success: true,
-      user: {
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        bio: updatedUser.bio,
-        skills: updatedUser.skills,
-        profilePicture: updatedUser.profilePicture,
-        githubUrl: updatedUser.githubUrl,
-        linkedinUrl: updatedUser.linkedinUrl
-      }
+      user: updatedUser
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Get all users (for discovery)
+// @desc    Upload user avatar
+// @route   POST /api/users/upload/avatar
+// @access  Private
+const uploadAvatarImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    const fileUrl = await resolveImageUrl(req.file, 'avatars', 'avatars', [{ width: 500, height: 500, crop: 'limit' }]);
+    const user = await User.findById(req.user._id);
+    user.profilePicture = fileUrl;
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Avatar uploaded successfully',
+      profilePicture: fileUrl,
+      user: updatedUser
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Upload user cover image
+// @route   POST /api/users/upload/cover
+// @access  Private
+const uploadCoverImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    const fileUrl = await resolveImageUrl(req.file, 'covers', 'covers', [{ width: 1600, height: 600, crop: 'limit' }]);
+    const user = await User.findById(req.user._id);
+    user.coverImage = fileUrl;
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Cover image uploaded successfully',
+      coverImage: fileUrl,
+      user: updatedUser
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all users (for discovery) with cursor & offset support
 // @route   GET /api/users/feed
 // @access  Private
 const getAllUsers = async (req, res) => {
   try {
-    // Exclude current user and get users with pagination
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const mongoose = require('mongoose');
+    const { cursor, page = 1, limit = 10, skills, location, openToCollab } = req.query;
+    const limitNum = Math.min(parseInt(limit) || 10, 30);
+    const skip = (parseInt(page) - 1) * limitNum;
 
-    // Filter by skills if provided
-    const skillsFilter = req.query.skills ? { skills: { $in: req.query.skills.split(',') } } : {};
+    // Build filter query
+    const filter = {};
+    if (skills) {
+      const skillsArr = skills.split(',').map(s => s.trim()).filter(Boolean);
+      if (skillsArr.length > 0) filter.skills = { $in: skillsArr };
+    }
+    if (location && location.trim() !== '') {
+      filter.location = { $regex: location.trim(), $options: 'i' };
+    }
+    if (openToCollab === 'true') {
+      filter.openToCollab = true;
+    }
 
     // Get all connections for the current user
     const connections = await Connection.find({
@@ -219,31 +287,49 @@ const getAllUsers = async (req, res) => {
         : connection.requester;
     });
 
-    // Add the current user's ID to the exclusion list
+    // Exclude current user and existing connections
     const excludedIds = [req.user._id, ...connectedUserIds];
+    filter._id = { $nin: excludedIds };
 
-    // Find users excluding the current user and connected users
-    const users = await User.find({
-      _id: { $nin: excludedIds },
-      ...skillsFilter
-    })
-      .select('name email bio skills profilePicture')
+    // If cursor is provided, use cursor-based pagination
+    if (cursor && mongoose.Types.ObjectId.isValid(cursor)) {
+      filter._id = { $nin: excludedIds, $lt: new mongoose.Types.ObjectId(cursor) };
+      const users = await User.find(filter)
+        .select('name email bio skills profilePicture role githubUsername githubUrl location openToCollab')
+        .sort({ _id: -1 })
+        .limit(limitNum);
+
+      const nextCursor = users.length === limitNum ? users[users.length - 1]._id : null;
+
+      return res.status(200).json({
+        success: true,
+        users,
+        pagination: {
+          nextCursor,
+          hasMore: users.length === limitNum
+        }
+      });
+    }
+
+    // Otherwise, use standard offset pagination
+    const users = await User.find(filter)
+      .select('name email bio skills profilePicture role githubUsername githubUrl location openToCollab')
+      .sort({ _id: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limitNum);
 
-    const total = await User.countDocuments({
-      _id: { $nin: excludedIds },
-      ...skillsFilter
-    });
+    const total = await User.countDocuments(filter);
 
     res.status(200).json({
       success: true,
       users,
       pagination: {
-        page,
-        limit,
+        page: parseInt(page),
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum),
+        nextCursor: users.length === limitNum ? users[users.length - 1]._id : null,
+        hasMore: skip + users.length < total
       }
     });
   } catch (error) {
@@ -352,6 +438,8 @@ module.exports = {
   logout,
   getProfile,
   updateProfile,
+  uploadAvatarImage,
+  uploadCoverImage,
   getAllUsers,
   getUserById,
   searchUsers

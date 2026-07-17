@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const {
   getMessages,
-  sendMessage
+  sendMessage,
+  getConversations
 } = require('../controllers/messageController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -10,6 +11,7 @@ const { protect } = require('../middleware/authMiddleware');
 router.use(protect);
 
 // Message routes
+router.get('/conversations/list', getConversations);
 router.get('/:userId', getMessages);
 router.post('/:userId', sendMessage);
 

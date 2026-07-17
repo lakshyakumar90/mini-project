@@ -10,12 +10,13 @@ const {
   removeConnection
 } = require('../controllers/connectionController');
 const { protect } = require('../middleware/authMiddleware');
+const { connectionLimiter } = require('../middleware/rateLimiter');
 
 // All routes are protected
 router.use(protect);
 
 // Connection requests
-router.post('/request/:userId', sendConnectionRequest);
+router.post('/request/:userId', connectionLimiter, sendConnectionRequest);
 router.post('/accept/:userId', acceptConnectionRequest);
 router.post('/reject/:userId', rejectConnectionRequest);
 router.get('/requests', getConnectionRequests);

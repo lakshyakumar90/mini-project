@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please provide a password'],
+    required: [function() { return !this.githubId; }, 'Please provide a password'],
     minlength: 8,
     select: false
   },
@@ -29,6 +29,10 @@ const userSchema = new mongoose.Schema({
   profilePicture: {
     type: String,
     default: 'https://as1.ftcdn.net/v2/jpg/06/33/54/78/1000_F_633547842_AugYzexTpMJ9z1YcpTKUBoqBF0CUCk10.jpg'
+  },
+  coverImage: {
+    type: String,
+    default: ''
   },
   skills: [{
     type: String,
@@ -52,6 +56,41 @@ const userSchema = new mongoose.Schema({
       message: 'Please provide a valid URL'
     }
   },
+  githubId: {
+    type: String,
+    sparse: true
+  },
+  githubUsername: {
+    type: String,
+    trim: true
+  },
+  githubStats: {
+    repos: { type: Number, default: 0 },
+    followers: { type: Number, default: 0 },
+    following: { type: Number, default: 0 }
+  },
+  githubRepos: [{
+    name: String,
+    description: String,
+    url: String,
+    stars: Number,
+    language: String
+  }],
+  location: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  openToCollab: {
+    type: Boolean,
+    default: false
+  },
+  pinnedProjects: [{
+    title: { type: String, required: true },
+    description: { type: String, default: '' },
+    url: { type: String, required: true },
+    techStack: [{ type: String, trim: true }]
+  }],
 }, { timestamps: true });
 
 // Hash password before saving

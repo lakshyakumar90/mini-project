@@ -1,0 +1,170 @@
+import io from 'socket.io-client';
+import { addRealtimeNotification } from '@/store/slices/notificationSlice';
+import { setUserStatus, setTypingStatus } from '@/store/slices/presenceSlice';
+import { addMessage, updateMessageStatus, markChatMessagesRead } from '@/store/slices/chatSlice';
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3333';
+
+let socket = null;
+let currentUserId = null;
+let activeChatId = null;
+
+const socketService = {
+  setActiveChatId: (chatId) => {
+    activeChatId = chatId;
+  },
+
+  getActiveChatId: () => activeChatId,
+
+  sendChatMessage: (receiver, content, tempId) => {
+    if (socket && socket.connected && currentUserId && receiver && content) {
+      const now = new Date().toISOString();
+      socket.emit('send_message', {
+        content: content.trim(),
+        sender: currentUserId,
+        receiver: receiver,
+        timestamp: now,
+        _id: tempId
+      });
+      return true;
+    }
+    return false;
+  },
+
+  connect: (userId, dispatch) => {
+    if (!userId) return null;
+    if (socket && socket.connected && currentUserId === userId) {
+      return socket;
+    }
+
+    if (socket) {
+      socket.disconnect();
+    }
+
+    currentUserId = userId;
+    socket = io(SOCKET_URL, {
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      withCredentials: true,
+    });
+
+    socket.on('connect', () => {
+      console.log('✅ Global socket connected/reconnected:', socket.id);
+      socket.emit('register_user', userId);
+      if (activeChatId) {
+        socket.emit('join_chat', { userId, targetUserId: activeChatId });
+      }
+    });
+
+    // Listeners for Notifications
+    socket.on('notification', (notification) => {
+      if (dispatch && notification) {
+        dispatch(addRealtimeNotification(notification));
+      }
+    });
+
+    // Listeners for Presence
+    socket.on('user_status_change', (data) => {
+      if (dispatch && data) {
+        dispatch(setUserStatus(data));
+      }
+    });
+
+    // Listeners for Typing Indicators
+    socket.on('typing_start', ({ senderId }) => {
+      if (dispatch && senderId) {
+        dispatch(setTypingStatus({ senderId, isTyping: true }));
+      }
+    });
+
+    socket.on('typing_stop', ({ senderId }) => {
+      if (dispatch && senderId) {
+        dispatch(setTypingStatus({ senderId, isTyping: false }));
+      }
+    });
+
+    // Listeners for Chat Messages
+    socket.on('receive_message', (newMessage) => {
+      if (!dispatch || !newMessage || !currentUserId) return;
+      try {
+        const messageSender = newMessage.senderId || newMessage.sender;
+        if (!messageSender || messageSender === currentUserId) return;
+
+        const formattedMessage = {
+          _id: newMessage._id || `received-${Date.now()}`,
+          sender: messageSender,
+          senderId: messageSender,
+          content: newMessage.text || newMessage.content || "",
+          createdAt: newMessage.timestamp || new Date().toISOString(),
+          timestamp: newMessage.timestamp || new Date().toISOString(),
+          status: newMessage.status || (activeChatId === messageSender ? 'read' : 'delivered')
+        };
+
+        dispatch(addMessage({
+          chatId: messageSender,
+          message: formattedMessage,
+        }));
+
+        if (socket && socket.connected) {
+          if (activeChatId === messageSender) {
+            socket.emit('mark_messages_read', { senderId: messageSender });
+          } else if (newMessage._id) {
+            socket.emit('message_delivered', { messageId: newMessage._id, senderId: messageSender });
+          }
+        }
+      } catch (err) {
+        console.error('Error processing received message in socketService:', err);
+      }
+    });
+
+    socket.on('message_sent', (data) => {
+      if (!dispatch || !data) return;
+      const currentChatId = socketService.getActiveChatId();
+      dispatch(updateMessageStatus({
+        chatId: currentChatId,
+        tempId: data.tempId,
+        newId: data._id,
+        status: data.status || 'sent'
+      }));
+    });
+
+    socket.on('message_status_update', (data) => {
+      if (!dispatch || !data) return;
+      dispatch(updateMessageStatus({
+        chatId: data.chatId || activeChatId,
+        messageId: data.messageId,
+        status: data.status
+      }));
+    });
+
+    socket.on('messages_read', (data) => {
+      if (!dispatch || !data) return;
+      dispatch(markChatMessagesRead({
+        chatId: data.chatId || data.readerId || activeChatId,
+        readerId: data.readerId
+      }));
+    });
+
+    return socket;
+  },
+
+  getSocket: () => socket,
+
+  emit: (event, data, callback) => {
+    if (socket && socket.connected) {
+      socket.emit(event, data, callback);
+    }
+  },
+
+  disconnect: () => {
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+      currentUserId = null;
+      activeChatId = null;
+    }
+  }
+};
+
+export default socketService;

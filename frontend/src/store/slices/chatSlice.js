@@ -45,7 +45,14 @@ const chatSlice = createSlice({
           const msgTime = new Date(msg.createdAt || msg.timestamp).getTime();
           const newMsgTime = new Date(message.createdAt || message.timestamp).getTime();
           const timeDiff = Math.abs(msgTime - newMsgTime);
-          return timeDiff < 2000; // 2 seconds tolerance
+          if (timeDiff < 2000) {
+            // Upgrade temp message inline if real message arrives
+            if ((msg._id && msg._id.toString().startsWith('temp-')) && (message._id && !message._id.toString().startsWith('temp-'))) {
+              msg._id = message._id;
+              if (message.status) msg.status = message.status;
+            }
+            return true;
+          }
         }
 
         return false;
@@ -70,11 +77,16 @@ const chatSlice = createSlice({
       }
     },
     appendMessages: (state, action) => {
-      const { chatId, messages } = action.payload;
+      const { chatId, messages, pagination } = action.payload;
       if (!state.messages[chatId]) {
         state.messages[chatId] = [];
       }
-      state.messages[chatId] = [...messages, ...state.messages[chatId]];
+      const existingIds = new Set(state.messages[chatId].map(m => m._id));
+      const newMessages = (messages || []).filter(m => !existingIds.has(m._id));
+      state.messages[chatId] = [...newMessages, ...state.messages[chatId]];
+      if (pagination) {
+        state.pagination = pagination;
+      }
     },
     setChatPartners: (state, action) => {
       state.chatPartners = action.payload;
@@ -93,6 +105,35 @@ const chatSlice = createSlice({
     setError: (state, action) => {
       state.loading = false;
       state.error = action.payload;
+    },
+    updateMessageStatus: (state, action) => {
+      const { chatId, messageId, tempId, status, newId } = action.payload;
+      const msgs = state.messages[chatId];
+      if (!msgs || !Array.isArray(msgs)) return;
+
+      msgs.forEach(msg => {
+        if (!msg) return;
+        if ((messageId && msg._id === messageId) || (tempId && (msg._id === tempId || msg.tempId === tempId))) {
+          if (status) msg.status = status;
+          if (newId) {
+            msg._id = newId;
+            delete msg.tempId;
+          }
+        }
+      });
+    },
+    markChatMessagesRead: (state, action) => {
+      const { chatId, readerId, senderId } = action.payload;
+      const targetChatId = chatId || readerId || senderId;
+      const msgs = state.messages[targetChatId];
+      if (!msgs || !Array.isArray(msgs)) return;
+
+      msgs.forEach(msg => {
+        if (!msg) return;
+        if (msg.status !== 'read' && (!senderId || msg.senderId === senderId || msg.sender === senderId)) {
+          msg.status = 'read';
+        }
+      });
     },
     clearMessages: (state) => {
       state.messages = {};
@@ -114,7 +155,8 @@ export const fetchMessages = ({ userId, page = 1, limit = 50 }) => async (dispat
         senderId: msg.senderId || msg.sender,
         content: msg.text || msg.content,
         createdAt: msg.timestamp,
-        timestamp: msg.timestamp
+        timestamp: msg.timestamp,
+        status: msg.status || 'sent'
       }));
       dispatch(setMessages({
         chatId: userId,
@@ -131,16 +173,22 @@ export const fetchMessages = ({ userId, page = 1, limit = 50 }) => async (dispat
 
 export const loadMoreMessages = ({ userId, page = 1, limit = 20 }) => async (dispatch) => {
   try {
-    dispatch(setLoading(true));
     const response = await messageService.getMessages(userId, page, limit);
     if (response.success && response.messages) {
       const processedMessages = response.messages.map(msg => ({
         _id: msg._id,
-        sender: msg.senderId,
-        content: msg.text,
-        createdAt: msg.timestamp
+        sender: msg.senderId || msg.sender,
+        senderId: msg.senderId || msg.sender,
+        content: msg.text || msg.content,
+        createdAt: msg.timestamp,
+        timestamp: msg.timestamp,
+        status: msg.status || 'sent'
       }));
-      dispatch(appendMessages({ chatId: userId, messages: processedMessages }));
+      dispatch(appendMessages({ 
+        chatId: userId, 
+        messages: processedMessages,
+        pagination: response.pagination
+      }));
     }
   } catch (error) {
     dispatch(setError(error));
@@ -150,7 +198,21 @@ export const loadMoreMessages = ({ userId, page = 1, limit = 20 }) => async (dis
 export const sendMessage = ({ userId, content }) => async (dispatch) => {
   try {
     const response = await messageService.sendMessage(userId, content);
-    dispatch(addMessage({ chatId: userId, message: response.message }));
+    if (response.success && response.message) {
+      const msg = response.message;
+      dispatch(addMessage({
+        chatId: userId,
+        message: {
+          _id: msg._id,
+          sender: msg.senderId || msg.sender,
+          senderId: msg.senderId || msg.sender,
+          content: msg.text || msg.content,
+          createdAt: msg.timestamp,
+          timestamp: msg.timestamp,
+          status: msg.status || 'sent'
+        }
+      }));
+    }
   } catch (error) {
     dispatch(setError(error));
   }
@@ -165,6 +227,8 @@ export const {
   clearChat,
   setLoading,
   setError,
+  updateMessageStatus,
+  markChatMessagesRead,
   clearMessages
 } = chatSlice.actions;
 

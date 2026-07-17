@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import connectionService from '@/services/connectionService';
+
 const initialState = {
   connections: [],
   pendingRequests: [],
@@ -25,30 +26,45 @@ const connectionSlice = createSlice({
       state.sentRequests = action.payload;
     },
     addConnection: (state, action) => {
-      state.connections.push(action.payload);
+      const item = action.payload;
+      const id = item._id || item.id;
+      if (!state.connections.some(c => (c._id || c.id) === id)) {
+        state.connections.push(item);
+      }
       state.pendingRequests = state.pendingRequests.filter(
-        (request) => request.id !== action.payload.id
+        (request) => (request._id || request.id) !== id
       );
     },
     removeConnection: (state, action) => {
+      const targetId = action.payload?._id || action.payload?.id || action.payload;
       state.connections = state.connections.filter(
-        (connection) => connection.id !== action.payload
+        (connection) => (connection._id || connection.id) !== targetId
       );
     },
     addPendingRequest: (state, action) => {
-      state.pendingRequests.push(action.payload);
+      const item = action.payload;
+      const id = item._id || item.id;
+      if (!state.pendingRequests.some(r => (r._id || r.id) === id)) {
+        state.pendingRequests.push(item);
+      }
     },
     removePendingRequest: (state, action) => {
+      const targetId = action.payload?._id || action.payload?.id || action.payload;
       state.pendingRequests = state.pendingRequests.filter(
-        (request) => request.id !== action.payload
+        (request) => (request._id || request.id) !== targetId
       );
     },
     addSentRequest: (state, action) => {
-      state.sentRequests.push(action.payload);
+      const item = action.payload;
+      const id = item._id || item.id;
+      if (!state.sentRequests.some(r => (r._id || r.id) === id)) {
+        state.sentRequests.push(item);
+      }
     },
     removeSentRequest: (state, action) => {
+      const targetId = action.payload?._id || action.payload?.id || action.payload;
       state.sentRequests = state.sentRequests.filter(
-        (request) => request.id !== action.payload
+        (request) => (request._id || request.id) !== targetId
       );
     },
     setLoading: (state, action) => {
@@ -61,59 +77,62 @@ const connectionSlice = createSlice({
     },
     setActionLoading: (state, action) => {
       state.actionLoading = action.payload;
-        state.actionError = null;
-        state.actionSuccess = null;
+      state.actionError = null;
+      state.actionSuccess = null;
     },
     setActionError: (state, action) => {
-        state.actionLoading = false;
-        state.actionError = action.payload;
+      state.actionLoading = false;
+      state.actionError = action.payload;
     },
     setActionSuccess: (state, action) => {
-        state.actionLoading = false;
+      state.actionLoading = false;
       state.actionSuccess = action.payload;
     }
   },
 });
 
-// Action creators
-export const fetchConnections = () => async (dispatch) => {
+// Action creators with silent parameter support to prevent UI loading flashes during background updates
+export const fetchConnections = (silent = false) => async (dispatch) => {
   try {
-    dispatch(setLoading(true));
+    if (!silent) dispatch(setLoading(true));
     const response = await connectionService.getConnections();
     dispatch(setConnections(response.connections || response.connectedUsers || []));
-    dispatch(setLoading(false));
+    if (!silent) dispatch(setLoading(false));
+    return response.connections || [];
   } catch (error) {
-    dispatch(setError(error));
+    if (!silent) dispatch(setError(error));
   }
 };
 
-export const fetchConnectionRequests = () => async (dispatch) => {
+export const fetchConnectionRequests = (silent = false) => async (dispatch) => {
   try {
-    dispatch(setLoading(true));
+    if (!silent) dispatch(setLoading(true));
     const response = await connectionService.getConnectionRequests();
     dispatch(setPendingRequests(response.requests || []));
-    dispatch(setLoading(false));
+    if (!silent) dispatch(setLoading(false));
+    return response.requests || [];
   } catch (error) {
-    dispatch(setError(error));
+    if (!silent) dispatch(setError(error));
   }
 };
 
-export const fetchSentRequests = () => async (dispatch) => {
+export const fetchSentRequests = (silent = false) => async (dispatch) => {
   try {
-    dispatch(setLoading(true));
+    if (!silent) dispatch(setLoading(true));
     const response = await connectionService.getSentRequests();
     dispatch(setSentRequests(response.requests || []));
-    dispatch(setLoading(false));
+    if (!silent) dispatch(setLoading(false));
+    return response.requests || [];
   } catch (error) {
-    dispatch(setError(error));
+    if (!silent) dispatch(setError(error));
   }
 };
 
-export const refreshNetworkState = () => async (dispatch) => {
+export const refreshNetworkState = (silent = true) => async (dispatch) => {
   await Promise.allSettled([
-    dispatch(fetchConnections()),
-    dispatch(fetchConnectionRequests()),
-    dispatch(fetchSentRequests()),
+    dispatch(fetchConnections(silent)),
+    dispatch(fetchConnectionRequests(silent)),
+    dispatch(fetchSentRequests(silent)),
   ]);
 };
 
@@ -121,11 +140,13 @@ export const sendRequest = (userId) => async (dispatch) => {
   try {
     dispatch(setActionLoading(true));
     await connectionService.sendConnectionRequest(userId);
+    dispatch(addSentRequest({ _id: userId, id: userId }));
     dispatch(setActionSuccess('Connection request sent successfully'));
-    // Keep network state in sync so UI can show "Request Sent" immediately.
-    dispatch(fetchSentRequests());
+    dispatch(fetchSentRequests(true));
+    return { success: true, userId, fulfilled: true };
   } catch (error) {
     dispatch(setActionError(error));
+    throw error;
   }
 };
 
@@ -133,12 +154,14 @@ export const acceptRequest = (userId) => async (dispatch) => {
   try {
     dispatch(setActionLoading(true));
     await connectionService.acceptConnectionRequest(userId);
+    dispatch(removePendingRequest(userId));
+    dispatch(addConnection({ _id: userId, id: userId }));
     dispatch(setActionSuccess('Connection request accepted'));
-    dispatch(fetchConnections());
-    dispatch(fetchConnectionRequests());
-    dispatch(fetchSentRequests());
+    dispatch(refreshNetworkState(true));
+    return { success: true, userId, fulfilled: true };
   } catch (error) {
     dispatch(setActionError(error));
+    throw error;
   }
 };
 
@@ -146,10 +169,13 @@ export const rejectRequest = (userId) => async (dispatch) => {
   try {
     dispatch(setActionLoading(true));
     await connectionService.rejectConnectionRequest(userId);
+    dispatch(removePendingRequest(userId));
     dispatch(setActionSuccess('Connection request rejected'));
-    dispatch(fetchConnectionRequests());
+    dispatch(fetchConnectionRequests(true));
+    return { success: true, userId, fulfilled: true };
   } catch (error) {
     dispatch(setActionError(error));
+    throw error;
   }
 };
 
@@ -157,10 +183,13 @@ export const removeExistingConnection = (userId) => async (dispatch) => {
   try {
     dispatch(setActionLoading(true));
     await connectionService.removeConnection(userId);
+    dispatch(removeConnection(userId));
     dispatch(setActionSuccess('Connection removed successfully'));
-    dispatch(fetchConnections());
+    dispatch(fetchConnections(true));
+    return { success: true, userId, fulfilled: true };
   } catch (error) {
     dispatch(setActionError(error));
+    throw error;
   }
 };
 

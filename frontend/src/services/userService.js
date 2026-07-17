@@ -89,12 +89,40 @@ const searchUsers = async (query, page = 1, limit = 10) => {
   }
 };
 
+const uploadAvatar = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post('/users/upload/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || 'Failed to upload avatar';
+  }
+};
+
+const uploadCover = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post('/users/upload/cover', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || 'Failed to upload cover image';
+  }
+};
+
 const userService = {
   register,
   login,
   logout,
   getCurrentUser,
   updateProfile,
+  uploadAvatar,
+  uploadCover,
   getFeed,
   getUserById,
   searchUsers,

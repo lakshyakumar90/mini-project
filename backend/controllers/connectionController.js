@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Connection = require('../models/Connection');
+const { notifyUser } = require('./notificationController');
 
 // @desc    Send connection request to another user
 // @route   POST /api/connections/request/:userId
@@ -40,10 +41,19 @@ const sendConnectionRequest = async (req, res) => {
     }
 
     // Create new connection request
-    await Connection.create({
+    const newConn = await Connection.create({
       requester: req.user._id,
       recipient: userId,
       status: 'pending'
+    });
+
+    notifyUser({
+      recipient: userId,
+      sender: req.user._id,
+      type: 'connection_request',
+      entityId: newConn._id,
+      entityModel: 'Connection',
+      message: 'Sent you a connection request'
     });
 
     res.status(200).json({ success: true, message: 'Connection request sent successfully' });
@@ -79,6 +89,15 @@ const acceptConnectionRequest = async (req, res) => {
     // Update connection status to accepted
     connectionRequest.status = 'accepted';
     await connectionRequest.save();
+
+    notifyUser({
+      recipient: userId,
+      sender: req.user._id,
+      type: 'connection_accepted',
+      entityId: connectionRequest._id,
+      entityModel: 'Connection',
+      message: 'Accepted your connection request'
+    });
 
     res.status(200).json({ success: true, message: 'Connection request accepted' });
   } catch (error) {

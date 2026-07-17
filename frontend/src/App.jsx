@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useEffect } from 'react';
 
 // Components
@@ -11,6 +11,7 @@ import MainLayout from './components/layout/MainLayout';
 
 // Redux actions
 import { getCurrentUser } from './store/slices/authSlice';
+import { refreshNetworkState } from './store/slices/connectionSlice';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -22,6 +23,9 @@ import NotFoundPage from './pages/NotFoundPage';
 
 // Dashboard pages
 import DashboardPage from './pages/DashboardPage';
+import FeedPage from './pages/FeedPage';
+import JobsPage from './pages/JobsPage';
+import JobDetailPage from './pages/JobDetailPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import RequestsPage from './pages/RequestsPage';
 import ChatPage from './pages/ChatPage';
@@ -43,12 +47,19 @@ const initializeTheme = () => {
 
 const App = () => {
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
     // Get current user on app load
     dispatch(getCurrentUser());
     initializeTheme();
   }, [dispatch]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(refreshNetworkState(true));
+    }
+  }, [isAuthenticated, dispatch]);
 
   return (
     <Router>
@@ -63,6 +74,9 @@ const App = () => {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route path="/feed" element={<FeedPage />} />
+            <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/user/:id" element={<UserProfilePage />} />

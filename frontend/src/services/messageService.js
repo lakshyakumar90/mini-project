@@ -34,9 +34,21 @@ const sendMessage = async (userId, content) => {
 };
 
 
+const getConversations = async () => {
+  try {
+    const response = await api.get('/messages/conversations/list');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    throw error.response?.data?.message || 'Failed to fetch conversations';
+  }
+};
+
+
 const messageService = {
   getMessages,
   sendMessage,
+  getConversations,
 };
 
 export default messageService;

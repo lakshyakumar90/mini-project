@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, AlertCircle, ArrowLeft, Users } from "lucide-react";
+import { Send, AlertCircle, ArrowLeft, Users, Check, CheckCheck } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { fetchConnections } from "@/store/slices/connectionSlice";
 import {
@@ -14,11 +14,16 @@ import {
   setChatPartners,
   addMessage,
   loadMoreMessages,
+  updateMessageStatus,
+  markChatMessagesRead,
 } from "@/store/slices/chatSlice";
-import io from "socket.io-client";
-import { format } from "date-fns";
+import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { useLocation } from "react-router-dom";
 import useSwipeGesture from "@/hooks/useSwipeGesture";
+import socketService from "@/services/socketService";
+import { setUsersStatusMap } from "@/store/slices/presenceSlice";
+import userService from "@/services/userService";
+import messageService from "@/services/messageService";
 
 const ChatPage = () => {
   const dispatch = useDispatch();
@@ -27,20 +32,27 @@ const ChatPage = () => {
   const userIdFromQuery = queryParams.get("userId");
 
   const { user } = useSelector((state) => state.auth);
-  const { activeChat, messages, loading, pagination } = useSelector(
+  const { activeChat, messages, loading, pagination, chatPartners } = useSelector(
     (state) => state.chat
   );
   const { connections } = useSelector((state) => state.connections);
+  const { onlineUsers, typingMap, lastSeenMap } = useSelector((state) => state.presence);
 
   const [message, setMessage] = useState("");
-  const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null); // use ref not state so socket changes never trigger re-render
   const [selectedChat, setSelectedChat] = useState(null);
+  const [extraPartners, setExtraPartners] = useState([]);
+  const [chatError, setChatError] = useState(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [isMobileView, setIsMobileView] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Stable socket accessor — always reads the live socket from the singleton
+  const getSocket = useCallback(() => socketService.getSocket(), []);
 
   useEffect(() => {
     const checkMobileView = () => {
@@ -64,22 +76,65 @@ const ChatPage = () => {
 
   useEffect(() => {
     dispatch(fetchConnections());
+    messageService.getConversations()
+      .then((data) => {
+        if (data && data.success && Array.isArray(data.conversations)) {
+          setExtraPartners(data.conversations);
+        }
+      })
+      .catch((err) => console.error("Error loading recent conversations:", err));
   }, [dispatch]);
+
+  const allPartners = useMemo(() => {
+    const map = new Map();
+    const validConns = (connections || []).filter((conn) => conn && conn._id);
+    validConns.forEach((c) => {
+      map.set(c._id.toString(), c);
+    });
+    const validChatPartners = (chatPartners || []).filter((conn) => conn && conn._id);
+    validChatPartners.forEach((c) => {
+      if (c && c._id && !map.has(c._id.toString())) {
+        map.set(c._id.toString(), c);
+      }
+    });
+    (extraPartners || []).forEach((c) => {
+      if (c && c._id && !map.has(c._id.toString())) {
+        map.set(c._id.toString(), c);
+      }
+    });
+    if (selectedChat && selectedChat._id && !map.has(selectedChat._id.toString())) {
+      map.set(selectedChat._id.toString(), selectedChat);
+    }
+    return Array.from(map.values());
+  }, [connections, chatPartners, extraPartners, selectedChat]);
+
+  // Request online status whenever allPartners change
+  useEffect(() => {
+    const s = getSocket();
+    if (allPartners && Array.isArray(allPartners) && allPartners.length > 0 && s && s.connected) {
+      const ids = allPartners.map(c => c._id).filter(Boolean);
+      if (ids.length > 0) {
+        s.emit('get_users_status', ids, (statusMap) => {
+          if (statusMap) {
+            dispatch(setUsersStatusMap(statusMap));
+          }
+        });
+      }
+    }
+  }, [allPartners, dispatch, getSocket]);
+
+  // Connect socket — run whenever user changes, but socketService.connect() is idempotent:
+  // it returns the existing socket if already connected for the same userId.
+  useEffect(() => {
+    if (user && user._id) {
+      socketRef.current = socketService.connect(user._id, dispatch);
+    }
+  }, [user?._id, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     try {
-      if (
-        !connections ||
-        !Array.isArray(connections) ||
-        connections.length === 0
-      ) {
-        return;
-      }
-
-      const validConnections = connections.filter((conn) => conn && conn._id);
-
-      if (validConnections.length > 0) {
-        dispatch(setChatPartners(validConnections));
+      if (allPartners && allPartners.length > 0) {
+        dispatch(setChatPartners(allPartners));
 
         const setupChatWithConnection = (connection) => {
           if (!connection || !connection._id) return;
@@ -98,14 +153,14 @@ const ChatPage = () => {
         };
 
         if (userIdFromQuery && !selectedChat) {
-          const connectionFromQuery = validConnections.find(
+          const connectionFromQuery = allPartners.find(
             (conn) => conn._id === userIdFromQuery
           );
           if (connectionFromQuery) {
             setupChatWithConnection(connectionFromQuery);
           }
         } else if (!activeChat && !selectedChat) {
-          const firstConnection = validConnections[0];
+          const firstConnection = allPartners[0];
           if (firstConnection) {
             setupChatWithConnection(firstConnection);
           }
@@ -114,111 +169,51 @@ const ChatPage = () => {
     } catch (error) {
       console.error("Error setting up chat partners:", error);
     }
-  }, [connections, activeChat, selectedChat, userIdFromQuery]);
+  }, [allPartners, activeChat, selectedChat, userIdFromQuery, dispatch]);
 
+  // Allow chat with userIdFromQuery even if not in allPartners initially (for job posters messaging applicants)
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL;
-    try {
-      const newSocket = io(socketUrl, {
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-      });
-      setSocket(newSocket);
-
-      return () => {
-        if (newSocket) {
-          newSocket.disconnect();
-          newSocket.close();
-        }
-      };
-    } catch (error) {
-      console.error("Error initializing socket connection:", error);
+    if (userIdFromQuery && !selectedChat && user && user._id) {
+      const isAlreadyPartner = allPartners && allPartners.some(conn => conn._id === userIdFromQuery);
+      
+      if (!isAlreadyPartner) {
+        userService.getUserById(userIdFromQuery)
+          .then(data => {
+            if (data && data.success && data.user) {
+              const safeConnection = {
+                _id: data.user._id,
+                name: data.user.name || "Unknown User",
+                profilePicture: data.user.profilePicture || "",
+                email: data.user.email || "",
+                bio: data.user.bio || (data.user.role ? `Role: ${data.user.role}` : "Job Applicant / Poster"),
+              };
+              setSelectedChat(safeConnection);
+              dispatch(setActiveChat(safeConnection._id));
+              dispatch(fetchMessages({ userId: safeConnection._id }));
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching user for chat:', err);
+            setChatError('Could not load user details for messaging.');
+          });
+      }
     }
-  }, []);
+  }, [userIdFromQuery, selectedChat, allPartners, user, dispatch]);
 
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = useCallback((instant = false) => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current.scrollIntoView({ behavior: instant ? "instant" : "smooth" });
     }
   }, []);
 
-  useEffect(() => {
-    const handleIncomingMessage = (newMessage) => {
-      if (!newMessage || !user || !user._id) return;
-
-      try {
-        const messageSender = newMessage.senderId || newMessage.sender;
-
-        if (!messageSender) {
-          console.log('No sender found in message:', newMessage);
-          return;
-        }
-
-        // Only process messages from other users
-        if (messageSender !== user._id) {
-          const formattedMessage = {
-            _id: newMessage._id || `received-${Date.now()}`,
-            sender: messageSender,
-            senderId: messageSender,
-            content: newMessage.text || newMessage.content || "",
-            createdAt: newMessage.timestamp || new Date().toISOString(),
-            timestamp: newMessage.timestamp || new Date().toISOString()
-          };
-
-          console.log('Adding received message:', formattedMessage);
-
-          dispatch(
-            addMessage({
-              chatId: messageSender,
-              message: formattedMessage,
-            })
-          );
-
-          // Auto-scroll to bottom when receiving new message
-          setTimeout(scrollToBottom, 100);
-        }
-      } catch (error) {
-        console.error("Error processing received message:", error);
-      }
-    };
-
-    const handleMessageSent = (data) => {
-      console.log('Message sent confirmation:', data);
-      // Handle message sent confirmation if needed
-    };
-
-    const handleMessageError = (error) => {
-      console.error('Socket message error:', error);
-    };
-
-    if (socket && user && user._id) {
-      try {
-        socket.emit("join_room", user._id);
-
-        socket.on("receive_message", handleIncomingMessage);
-        socket.on("message_sent", handleMessageSent);
-        socket.on("message_error", handleMessageError);
-
-        return () => {
-          socket.off("receive_message", handleIncomingMessage);
-          socket.off("message_sent", handleMessageSent);
-          socket.off("message_error", handleMessageError);
-        };
-      } catch (error) {
-        console.error("Error setting up socket events:", error);
-      }
-    }
-
-    return () => {};
-  }, [socket, user, dispatch, scrollToBottom]);
+  // Global socket chat listeners are consolidated in socketService.js to prevent re-attachment on re-render.
 
   const handleScroll = useCallback(() => {
     if (!messagesContainerRef.current || !activeChat || isLoadingMore) return;
 
     const { scrollTop, scrollHeight } = messagesContainerRef.current;
 
-    if (scrollTop === 0 && pagination.page < pagination.pages) {
+    if (scrollTop <= 50 && pagination.page < pagination.pages) {
       const previousScrollHeight = scrollHeight;
       setIsLoadingMore(true);
 
@@ -233,7 +228,7 @@ const ChatPage = () => {
           if (messagesContainerRef.current) {
             const newScrollHeight = messagesContainerRef.current.scrollHeight;
             messagesContainerRef.current.scrollTop =
-              newScrollHeight - previousScrollHeight;
+              newScrollHeight - previousScrollHeight + scrollTop;
           }
         })
         .finally(() => {
@@ -243,13 +238,29 @@ const ChatPage = () => {
   }, [activeChat, pagination, isLoadingMore, dispatch]);
 
   useEffect(() => {
-    if (messages && activeChat && messages[activeChat]) {
-      const lastMessage = messages[activeChat][messages[activeChat].length - 1];
-      if (lastMessage && lastMessage.sender === user._id) {
-        setTimeout(scrollToBottom, 100);
+    if (messages && activeChat && messages[activeChat] && !isLoadingMore) {
+      const msgs = messages[activeChat];
+      if (msgs.length > 0) {
+        const container = messagesContainerRef.current;
+        if (container) {
+          const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
+          const lastMsg = msgs[msgs.length - 1];
+          const isMyMsg = lastMsg && (lastMsg.sender === user?._id || lastMsg.senderId === user?._id);
+          if (isNearBottom || isMyMsg) {
+            setTimeout(() => scrollToBottom(false), 80);
+          }
+        } else {
+          setTimeout(() => scrollToBottom(true), 80);
+        }
       }
     }
-  }, [messages, activeChat, user._id, scrollToBottom]);
+  }, [messages, activeChat, user?._id, scrollToBottom, isLoadingMore]);
+
+  useEffect(() => {
+    if (activeChat) {
+      setTimeout(() => scrollToBottom(true), 120);
+    }
+  }, [activeChat, scrollToBottom]);
 
   useEffect(() => {
     let timer = null;
@@ -278,6 +289,22 @@ const ChatPage = () => {
       if (timer) clearTimeout(timer);
     };
   }, [isMobileView, selectedChat, showSidebar]);
+
+  useEffect(() => {
+    socketService.setActiveChatId(activeChat);
+    const s = getSocket();
+    if (activeChat && s && s.connected && user && user._id) {
+      s.emit("join_chat", { userId: user._id, targetUserId: activeChat });
+      s.emit("mark_messages_read", { senderId: activeChat });
+      dispatch(markChatMessagesRead({ chatId: activeChat, senderId: activeChat }));
+    }
+  }, [activeChat, user, dispatch, getSocket]);
+
+  useEffect(() => {
+    return () => {
+      socketService.setActiveChatId(null);
+    };
+  }, []);
 
   const handleSelectChat = (connection) => {
     if (!connection || !connection._id) {
@@ -310,24 +337,55 @@ const ChatPage = () => {
     setShowSidebar((prev) => !prev);
   };
 
-  const handleSendMessage = (e) => {
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setMessage(val);
+
+    const s = getSocket();
+    if (!s || !s.connected || !activeChat || !user?._id) return;
+
+    s.emit("typing_start", { receiverId: activeChat, chatId: activeChat });
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      const s2 = getSocket();
+      if (s2 && s2.connected) {
+        s2.emit("typing_stop", { receiverId: activeChat, chatId: activeChat });
+      }
+    }, 2000);
+  };
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
 
     if (!message || !message.trim() || !activeChat) return;
     if (!user || !user._id) return;
+
+    setChatError(null);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    const s = getSocket();
+    if (s && s.connected) {
+      s.emit("typing_stop", { receiverId: activeChat, chatId: activeChat });
+    }
 
     try {
       const now = new Date();
       const timestamp = now.toISOString();
       const messageContent = message.trim();
 
+      const tempId = `temp-${Date.now()}`;
       const tempMessage = {
-        _id: `temp-${Date.now()}`,
+        _id: tempId,
+        tempId: tempId,
         sender: user._id,
         senderId: user._id,
         content: messageContent,
         createdAt: timestamp,
         timestamp: timestamp,
+        status: "sent",
       };
 
       // Add message to local state immediately for better UX
@@ -338,20 +396,14 @@ const ChatPage = () => {
         })
       );
 
-      // Send message via socket
-      if (socket && socket.connected) {
-        socket.emit("send_message", {
-          content: messageContent,
-          sender: user._id,
-          receiver: activeChat,
-          timestamp: timestamp,
-          _id: tempMessage._id,
-        });
-      } else {
-        console.error("Socket not connected");
+      // Send message via socketService if connected, otherwise fallback to REST API
+      const sentViaSocket = socketService.sendChatMessage(activeChat, messageContent, tempId);
+      if (!sentViaSocket) {
+        await messageService.sendMessage(activeChat, messageContent);
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      setChatError(typeof error === 'string' ? error : error?.message || "Failed to send message.");
     }
 
     setMessage("");
@@ -363,6 +415,28 @@ const ChatPage = () => {
     if (!timestamp) return "";
     const date = new Date(timestamp);
     return format(date, "h:mm a");
+  };
+
+  const formatDateHeader = (timestamp) => {
+    if (!timestamp) return "";
+    try {
+      const date = new Date(timestamp);
+      if (isToday(date)) return "Today";
+      if (isYesterday(date)) return "Yesterday";
+      return format(date, "MMMM d, yyyy");
+    } catch (e) {
+      return "";
+    }
+  };
+
+  const renderStatusTicks = (status) => {
+    if (status === "read") {
+      return <CheckCheck className="w-3.5 h-3.5 text-[#38bdf8] drop-shadow-[0_0_2px_rgba(56,189,248,0.4)] shrink-0" />;
+    }
+    if (status === "delivered") {
+      return <CheckCheck className="w-3.5 h-3.5 opacity-80 shrink-0" />;
+    }
+    return <Check className="w-3.5 h-3.5 opacity-80 shrink-0" />;
   };
 
   const handleSwipeLeft = useCallback(() => {
@@ -379,296 +453,326 @@ const ChatPage = () => {
 
   const swipeRef = useSwipeGesture(handleSwipeLeft, handleSwipeRight, 70, 300);
 
-  if (connections && connections.length === 0) {
+  const displayChannels = allPartners;
+
+  if (displayChannels.length === 0 && !userIdFromQuery && !selectedChat) {
     return (
       <div
-        className="h-[calc(100vh-8rem)] flex items-center justify-center p-4"
+        className="h-[calc(100vh-8rem)] flex items-center justify-center p-4 max-w-[1100px] mx-auto animate-fade-bg-in"
         ref={swipeRef}
       >
-        <Card className="w-full max-w-md p-4 md:p-6">
-          <CardHeader>
-            <CardTitle className="text-center">No Connections</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Alert className="bg-amber-50 border-amber-200">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-700 text-sm md:text-base">
-                You need to connect with other users before you can chat with
-                them.
-              </AlertDescription>
-            </Alert>
-            <p className="text-center mt-4 text-muted-foreground text-sm md:text-base">
-              Go to the{" "}
-              <a href="/dashboard" className="text-primary hover:underline">
-                Developer Network
-              </a>{" "}
-              to find and connect with other developers.
+        <div className="dub-card w-full max-w-md p-8 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 mx-auto flex items-center justify-center text-amber-500">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-satoshi font-semibold text-lg text-foreground">No Active Connections</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto">
+              You need to connect with other developers and have your request accepted before opening real-time chat rooms.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+          <a href="/dashboard" className="block pt-2">
+            <button className="dub-btn-primary text-xs py-2 px-5">
+              Explore Developer Directory
+            </button>
+          </a>
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      className="h-[calc(100vh-6rem)] flex flex-col gap-4"
+      className="h-[calc(100vh-6rem)] max-w-[1100px] mx-auto py-2 px-2 sm:px-4 flex flex-col gap-4 font-inter animate-fade-bg-in"
       ref={swipeRef}
     >
-      {/* Mobile Header - Only visible on mobile when chat is selected and sidebar is hidden */}
+      {/* Mobile Header */}
       {isMobileView && selectedChat && !showSidebar && (
-        <div className="md:hidden flex items-center gap-2 mb-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="md:hidden relative group"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-primary/10 rounded-full px-1 whitespace-nowrap">
-              Swipe right
-            </span>
-          </Button>
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarImage
-                src={selectedChat?.profilePicture}
-                alt={selectedChat?.name || "User"}
-              />
-              <AvatarFallback>{selectedChat?.name?.[0] || "U"}</AvatarFallback>
-            </Avatar>
-            <span className="font-medium">
-              {selectedChat?.name || "Unknown User"}
-            </span>
+        <div className="md:hidden flex items-center justify-between p-3 dub-card border border-border">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSidebar}
+              className="dub-btn-ghost p-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-2.5">
+              <Avatar className="h-8 w-8 border border-border">
+                <AvatarImage src={selectedChat?.profilePicture} alt={selectedChat?.name || "User"} />
+                <AvatarFallback className="bg-secondary text-xs">{selectedChat?.name?.[0] || "U"}</AvatarFallback>
+              </Avatar>
+              <span className="font-satoshi font-semibold text-sm text-foreground">
+                {selectedChat?.name || "Unknown User"}
+              </span>
+            </div>
           </div>
+          <span className="dub-pill text-[10px] py-0.5 px-2 bg-secondary">
+            {onlineUsers[selectedChat?._id] === "online" ? "Online" : "Offline"}
+          </span>
         </div>
       )}
 
-      {/* Swipe Hint - Only shown on mobile for first-time users */}
+      {/* Swipe Hint */}
       {showSwipeHint && isMobileView && selectedChat && !showSidebar && (
-        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-4 py-2 rounded-lg z-50 text-center animate-in fade-in duration-300">
-          <p className="text-sm">Swipe right to see contacts</p>
-          <div className="flex justify-center mt-1">
-            <div className="text-white animate-pulse">
-              <ArrowLeft className="h-4 w-4" />
-            </div>
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 border border-border text-white px-4 py-2.5 rounded-[10px] z-50 text-center animate-in fade-in duration-300 shadow-subtle text-xs">
+          <p>Swipe right to view peer channels</p>
+          <div className="flex justify-center mt-1 text-[#2563eb]">
+            <ArrowLeft className="h-4 w-4 animate-pulse" />
           </div>
         </div>
       )}
 
       {/* Responsive Layout Container */}
       <div className="flex flex-1 gap-4 min-h-0">
-        {/* Sidebar - Hidden on mobile when a chat is selected */}
+        {/* Sidebar */}
         {(showSidebar || !isMobileView) && (
-          <Card className="w-full md:w-80 shrink-0">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Messages</CardTitle>
+          <div className="dub-card w-full md:w-80 shrink-0 flex flex-col min-h-0 border border-border">
+            <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+              <h2 className="font-satoshi font-semibold text-base text-foreground">Peer Channels</h2>
               {isMobileView && selectedChat && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleSidebar}
-                  className="md:hidden"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
+                <button onClick={toggleSidebar} className="dub-btn-ghost p-1">
+                  <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+                </button>
               )}
-            </CardHeader>
-            <ScrollArea className="h-[calc(100vh-14rem)] md:h-[calc(100vh-12rem)]">
-              <div className="space-y-4 p-4">
-                {connections &&
-                Array.isArray(connections) &&
-                connections.length > 0 ? (
-                  connections.map((connection) => {
+            </div>
+            <ScrollArea className="flex-1 overflow-y-auto">
+              <div className="space-y-1 p-2">
+                {displayChannels && Array.isArray(displayChannels) && displayChannels.length > 0 ? (
+                  displayChannels.map((connection) => {
                     if (!connection || !connection._id) return null;
+                    const isOnline = onlineUsers[connection._id] === 'online';
+                    const isTyping = typingMap[connection._id];
+                    const isSelected = activeChat === connection._id;
 
                     return (
                       <div
                         key={connection._id}
-                        className={`flex items-center space-x-4 p-2 rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
-                          activeChat === connection._id
-                            ? "bg-primary/10"
-                            : "hover:bg-accent"
+                        className={`flex items-center gap-3 p-2.5 rounded-[8px] cursor-pointer transition-all ${
+                          isSelected
+                            ? "bg-primary/10 border border-primary/20"
+                            : "hover:bg-secondary/70 border border-transparent"
                         }`}
                         onClick={() => handleSelectChat(connection)}
                       >
-                        <Avatar>
-                          <AvatarImage
-                            src={connection.profilePicture}
-                            alt={connection.name || "User"}
+                        <div className="relative shrink-0">
+                          <Avatar className="w-10 h-10 border border-border">
+                            <AvatarImage src={connection.profilePicture} alt={connection.name || "User"} />
+                            <AvatarFallback className="bg-secondary font-semibold text-xs text-foreground">
+                              {connection.name?.[0] || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span
+                            className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${
+                              isOnline ? "bg-[#16a34a]" : "bg-muted-foreground/40"
+                            }`}
                           />
-                          <AvatarFallback>
-                            {connection.name?.[0] || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {connection.name || "Unknown User"}
-                          </p>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {connection.bio ||
-                              `Chat with ${connection.name || "this user"}`}
-                          </p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs sm:text-sm font-satoshi font-semibold truncate text-foreground">
+                              {connection.name || "Unknown User"}
+                            </p>
+                          </div>
+                          {isTyping ? (
+                            <p className="text-[11px] text-[#2563eb] font-geist animate-pulse">Typing...</p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground truncate font-geist">
+                              {connection.bio || `Chat with ${connection.name || "peer"}`}
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="text-center py-4 text-muted-foreground">
-                    No connections found
+                  <div className="text-center py-8 text-xs text-muted-foreground">
+                    No peer channels found
                   </div>
                 )}
               </div>
             </ScrollArea>
-          </Card>
+          </div>
         )}
 
-        {/* Chat Area - Hidden on mobile when showing sidebar */}
+        {/* Chat Area */}
         {(!showSidebar || !isMobileView || !selectedChat) && (
-          <Card className="flex-1 flex flex-col min-h-0">
+          <div className="dub-card flex-1 flex flex-col min-h-0 border border-border">
             {selectedChat ? (
               <>
-                {/* Fixed Header - Hidden on mobile when we show the top bar */}
-                <CardHeader className="border-b py-4 shrink-0 hidden md:block">
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarImage
-                        src={selectedChat?.profilePicture}
-                        alt={selectedChat?.name || "User"}
-                      />
-                      <AvatarFallback>
+                {/* Fixed Header */}
+                <div className="p-4 border-b border-border flex items-center justify-between shrink-0 hidden md:flex">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-10 h-10 border border-border">
+                      <AvatarImage src={selectedChat?.profilePicture} alt={selectedChat?.name || "User"} />
+                      <AvatarFallback className="bg-secondary font-semibold text-xs text-foreground">
                         {selectedChat?.name?.[0] || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle>
+                      <h3 className="font-satoshi font-semibold text-base text-foreground">
                         {selectedChat?.name || "Unknown User"}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedChat?.email || ""}
-                      </p>
-                    </div>
-                    {/* Mobile toggle button to show contacts */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggleSidebar}
-                      className="ml-auto md:hidden relative group"
-                    >
-                      <Users className="h-5 w-5" />
-                      <span className="absolute -left-1 -top-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs bg-primary/10 rounded-full px-1 whitespace-nowrap">
-                        Swipe left
-                      </span>
-                    </Button>
-                  </div>
-                </CardHeader>
-
-                {/* Scrollable Content Area */}
-                <div className="flex-1 overflow-hidden">
-                  <ScrollArea
-                    ref={messagesContainerRef}
-                    className="h-full"
-                    onScroll={handleScroll}
-                  >
-                    <div className="space-y-3 p-4 pb-6">
-                      {isLoadingMore && (
-                        <div className="text-center py-2">
-                          <p className="text-sm text-muted-foreground">
-                            Loading more messages...
-                          </p>
-                        </div>
+                      </h3>
+                      {onlineUsers[selectedChat?._id] === "online" ? (
+                        <p className="text-[11px] text-[#16a34a] font-geist flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a] animate-pulse"></span>
+                          Online now
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground font-geist">
+                          {lastSeenMap[selectedChat?._id]
+                            ? `Last seen ${formatDistanceToNow(new Date(lastSeenMap[selectedChat?._id]), { addSuffix: true })}`
+                            : "Offline"}
+                        </p>
                       )}
-                      <div>
-                        {messages && activeChat && messages[activeChat] ? (
-                          messages[activeChat].map((msg, index) => {
-                            if (!msg) return null;
-
-                            const senderId = msg.sender || msg.senderId;
-                            const isSentByMe = senderId === user._id;
-
-                            return (
-                              <div
-                                key={msg._id || `msg-${index}`}
-                                className={`flex py-1 ${
-                                  isSentByMe ? "justify-end" : "justify-start"
-                                } w-full animate-in slide-in-from-bottom-2 duration-300`}
-                              >
-                                <div
-                                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm ${
-                                    isSentByMe
-                                      ? "bg-primary text-primary-foreground"
-                                      : "bg-muted"
-                                  }`}
-                                >
-                                  <p className="text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
-                                    {msg.content}
-                                  </p>
-                                  <div
-                                    className={`mt-1 text-xs opacity-70 ${
-                                      isSentByMe ? "text-right" : "text-left"
-                                    }`}
-                                  >
-                                    {formatMessageTime(msg.createdAt || msg.timestamp)}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="text-center py-4 text-muted-foreground">
-                            {loading
-                              ? "Loading messages..."
-                              : "No messages yet"}
-                          </div>
-                        )}
-                      </div>
-                      <div ref={messagesEndRef} />
                     </div>
-                  </ScrollArea>
+                  </div>
+                  <button
+                    onClick={toggleSidebar}
+                    className="md:hidden dub-btn-ghost p-2"
+                  >
+                    <Users className="h-4 w-4" />
+                  </button>
                 </div>
 
-                {/* Fixed Footer/Input Area */}
-                <div className="p-2 sm:p-4 border-t shrink-0">
-                  <form onSubmit={handleSendMessage} className="flex space-x-2">
-                    <Input
+                {/* Scrollable Messages Area */}
+                <div 
+                  ref={messagesContainerRef}
+                  onScroll={handleScroll}
+                  className="flex-1 overflow-y-auto flex flex-col min-h-0 p-4 pb-6 space-y-3"
+                >
+                  {chatError && (
+                    <div className="p-2.5 bg-destructive/15 border border-destructive/30 rounded-lg text-xs text-destructive flex items-center justify-between shrink-0 mb-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{chatError}</span>
+                      </div>
+                      <button onClick={() => setChatError(null)} className="font-bold px-1.5 hover:opacity-75">✕</button>
+                    </div>
+                  )}
+                  {isLoadingMore && (
+                    <div className="text-center py-2 text-xs text-muted-foreground font-geist">
+                      Loading prior messages...
+                    </div>
+                  )}
+                  <div className="space-y-3 flex-1">
+                    {messages && activeChat && messages[activeChat] ? (
+                      messages[activeChat].map((msg, index) => {
+                        if (!msg) return null;
+
+                        const senderId = msg.sender || msg.senderId;
+                        const isSentByMe = senderId === user._id;
+
+                        // Check if we need to show date divider above this message
+                        let showDateDivider = false;
+                        const msgDateStr = formatDateHeader(msg.createdAt || msg.timestamp);
+                        if (index === 0) {
+                          showDateDivider = true;
+                        } else {
+                          const prevMsg = messages[activeChat][index - 1];
+                          if (prevMsg) {
+                            const prevDateStr = formatDateHeader(prevMsg.createdAt || prevMsg.timestamp);
+                            if (msgDateStr !== prevDateStr) {
+                              showDateDivider = true;
+                            }
+                          }
+                        }
+
+                        return (
+                          <div key={msg._id || `msg-${index}`} className="w-full space-y-2">
+                            {showDateDivider && msgDateStr && (
+                              <div className="flex justify-center my-3 w-full">
+                                <span className="px-3.5 py-1 rounded-full bg-secondary/80 border border-border/80 text-muted-foreground text-[11px] font-satoshi font-medium shadow-subtle backdrop-blur-sm select-none">
+                                  {msgDateStr}
+                                </span>
+                              </div>
+                            )}
+                            <div
+                              className={`flex ${isSentByMe ? "justify-end" : "justify-start"} w-full animate-in slide-in-from-bottom-2 duration-200`}
+                            >
+                              <div
+                                className={`max-w-[85%] sm:max-w-[70%] rounded-[12px] px-3.5 py-2 shadow-subtle relative ${
+                                  isSentByMe
+                                    ? "bg-[#2563eb] text-white"
+                                    : "bg-secondary border border-border text-foreground"
+                                }`}
+                              >
+                                <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-inter pr-12 sm:pr-14">
+                                  {msg.content}
+                                </p>
+                                <div
+                                  className={`flex items-center justify-end gap-1 mt-1 -mb-0.5 text-[10px] font-geist select-none ${
+                                    isSentByMe ? "text-blue-100/90" : "text-muted-foreground/80"
+                                  }`}
+                                >
+                                  <span>{formatMessageTime(msg.createdAt || msg.timestamp)}</span>
+                                  {isSentByMe && (
+                                    <span className="inline-flex items-center ml-0.5" title={`Status: ${msg.status || 'sent'}`}>
+                                      {renderStatusTicks(msg.status || 'sent')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-12 text-xs text-muted-foreground font-geist">
+                        {loading ? "Loading message history..." : "No messages yet. Say hello to initiate discussion!"}
+                      </div>
+                    )}
+                  </div>
+                  {typingMap[selectedChat?._id] && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border rounded-[10px] w-fit text-[11px] text-[#2563eb] font-geist animate-pulse">
+                      <span>{selectedChat.name} is typing...</span>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} className="shrink-0 h-px" />
+                </div>
+
+                {/* Footer Input Area */}
+                <div className="p-3 border-t border-border shrink-0 bg-card">
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <input
+                      type="text"
                       value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Type a message..."
-                      className="flex-1"
+                      onChange={handleInputChange}
+                      placeholder="Type a message or code snippet..."
+                      className="dub-input flex-1 text-xs sm:text-sm py-2.5"
                       autoComplete="off"
                     />
-                    <Button
+                    <button
                       type="submit"
-                      size="icon"
                       disabled={!message.trim()}
-                      className="transition-transform active:scale-95"
+                      className="dub-btn-primary px-4 py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
                     >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                      <Send className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Send</span>
+                    </button>
                   </form>
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full p-4">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground text-center">
-                  {connections && connections.length > 0
-                    ? "Select a connection to start chatting"
-                    : "Connect with other users to start chatting"}
-                </p>
-                {isMobileView && connections && connections.length > 0 && (
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={toggleSidebar}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Show Connections
-                  </Button>
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-secondary border border-border mx-auto flex items-center justify-center text-muted-foreground">
+                  <Users className="h-6 w-6 text-[#2563eb]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-satoshi font-semibold text-base text-foreground">No Chat Selected</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    {displayChannels && displayChannels.length > 0
+                      ? "Select a peer channel from the left sidebar to open real-time Socket.IO discussion."
+                      : "Connect with verified developers or message job applicants to initiate conversation."}
+                  </p>
+                </div>
+                {isMobileView && displayChannels && displayChannels.length > 0 && (
+                  <button onClick={toggleSidebar} className="dub-btn-outline text-xs py-2 px-4 mt-2">
+                    Show Peer Channels
+                  </button>
                 )}
               </div>
             )}
-          </Card>
+          </div>
         )}
       </div>
     </div>

@@ -1,12 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { Search, Users, MessageSquare, UserPlus, Loader2, X } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Search, Users, MessageSquare, UserPlus, Loader2, X, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import userService from '@/services/userService';
 import { refreshNetworkState, sendRequest } from '@/store/slices/connectionSlice';
 
@@ -38,7 +34,8 @@ const SearchPage = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);  // Perform search when debounced query changes
+  }, [searchQuery]);
+
   useEffect(() => {
     if (debouncedQuery.trim()) {
       handleSearch(debouncedQuery, 1);
@@ -56,7 +53,6 @@ const SearchPage = () => {
       setShowAlert(true);
       setRequestingUserId(null);
 
-      // Ensure global UI reflects latest connection/sent states.
       dispatch(refreshNetworkState());
 
       const timer = setTimeout(() => {
@@ -100,18 +96,21 @@ const SearchPage = () => {
 
   const handleSendRequest = (userId) => {
     setRequestingUserId(userId);
-    dispatch(sendRequest(userId));
+    dispatch(sendRequest(userId))
+      .then(() => setRequestingUserId(null))
+      .catch(() => setRequestingUserId(null));
   };
 
   const hasSentRequest = (userId) => {
     if (!sentRequests || !Array.isArray(sentRequests)) return false;
-    return sentRequests.some((u) => u?._id === userId);
+    return sentRequests.some((u) => (u?._id || u?.id || u) === userId);
   };
 
   const isConnected = (userId) => {
     if (!connections || !Array.isArray(connections)) return false;
-    return connections.some((u) => u?._id === userId);
+    return connections.some((u) => (u?._id || u?.id || u) === userId);
   };
+
   const handleClearSearch = () => {
     setSearchQuery('');
     setSearchResults([]);
@@ -119,208 +118,201 @@ const SearchPage = () => {
     setError('');
     setSearchParams({});
   };
+
   return (
-    <div className="space-y-8">      {/* Header */}
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
-          <Search className="h-8 w-8 text-primary" />
-          Search Developers
-        </h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Find developers by name or skills. Connect with like-minded professionals and build your network.
-        </p>
-      </div>      {/* Search Bar */}
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              type="text"
-              placeholder="Search by name or skills (e.g., React, JavaScript, John Doe)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 h-12 text-base"
-              autoFocus
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearSearch}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-          
-          {debouncedQuery && (
-            <div className="mt-3 text-sm text-muted-foreground">
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Searching for "{debouncedQuery}"...
-                </div>
-              ) : hasSearched ? (
-                <div>
-                  Found {pagination.total} result{pagination.total !== 1 ? 's' : ''} for "{debouncedQuery}"
-                </div>
-              ) : null}
-            </div>
+    <div className="max-w-[1100px] mx-auto py-6 px-4 font-inter space-y-8 animate-fade-bg-in">
+      {/* Header Banner */}
+      <div className="dub-card-paper p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-border">
+        <div className="space-y-1">
+          <span className="dub-pill text-[11px] py-0.5 px-2.5">
+            <span className="w-2 h-2 rounded-full bg-[#2563eb]"></span> Global Index & Discovery
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-satoshi font-semibold text-foreground tracking-tight">
+            Search Developer Directory
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed">
+            Query the network by name, role title, or verified tech stack tag. Connect directly with peers across the ecosystem.
+          </p>
+        </div>
+      </div>
+
+      {/* Search Input Box */}
+      <div className="dub-card p-4">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <input
+            type="text"
+            placeholder="Search by name, role, or tech stack tag (e.g., React, Go, Python, Machine Learning)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="dub-input !pl-10 pr-10 text-xs sm:text-sm py-2.5"
+            autoFocus
+          />
+          {searchQuery && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+        
+        {debouncedQuery && (
+          <div className="mt-2.5 text-xs text-muted-foreground px-1 font-geist">
+            {loading ? (
+              <div className="flex items-center gap-2 text-[#2563eb]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Searching index for "{debouncedQuery}"...</span>
+              </div>
+            ) : hasSearched ? (
+              <div>
+                Found <strong className="text-foreground">{pagination.total}</strong> verified profile{pagination.total !== 1 ? 's' : ''} matching "{debouncedQuery}"
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
 
-      {/* Action Feedback */}
+      {/* Action Feedback Alerts */}
       {showAlert && (
-        <Alert className={`max-w-2xl mx-auto ${actionError ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
-          <AlertDescription className={actionError ? "text-red-700" : "text-green-700"}>
-            {actionError || actionSuccess}
-          </AlertDescription>
-        </Alert>
+        <div className={`p-4 rounded-[12px] border text-xs sm:text-sm ${actionError ? "bg-red-500/10 border-red-500/20 text-red-500" : "bg-green-500/10 border-green-500/20 text-[#16a34a]"}`}>
+          {actionError || actionSuccess}
+        </div>
       )}
 
-      {/* Error Message */}
       {error && (
-        <Alert variant="destructive" className="max-w-2xl mx-auto">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <div className="p-4 rounded-[12px] bg-red-500/10 border border-red-500/20 text-red-500 text-xs sm:text-sm">
+          {error}
+        </div>
       )}
 
-      {/* Search Results */}
-      {hasSearched && (        <div className="space-y-6">
+      {/* Search Results Grid */}
+      {hasSearched && (
+        <div className="space-y-6">
           {searchResults.length > 0 ? (
             <>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-500">
-                {searchResults.map((developer, index) => (
-                  <div key={developer._id} className={`animate-in slide-in-from-bottom-4 duration-500 delay-${index * 50}`}>
-                    <Card className="h-full flex flex-col hover:shadow-lg transition-shadow duration-200">
-                      <CardHeader className="text-center">
-                        <Link to={`/user/${developer._id}`}>
-                          <Avatar className="w-20 h-20 mx-auto hover:opacity-80 transition-opacity">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {searchResults.map((developer) => (
+                  <div key={developer._id} className="dub-card p-5 flex flex-col justify-between h-full group">
+                    <div>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <Link to={`/user/${developer._id}`} className="flex items-center gap-3">
+                          <Avatar className="w-12 h-12 rounded-full border border-border shrink-0">
                             <AvatarImage src={developer.profilePicture} alt={developer.name || 'User'} />
-                            <AvatarFallback>{developer.name?.[0] || 'U'}</AvatarFallback>
+                            <AvatarFallback className="bg-secondary text-foreground font-semibold text-sm">
+                              {developer.name?.[0] || 'U'}
+                            </AvatarFallback>
                           </Avatar>
-                          <CardTitle className="mt-4 hover:text-primary transition-colors">
-                            {developer.name || 'Unknown User'}
-                          </CardTitle>
-                          <CardDescription>{developer.role || 'Developer'}</CardDescription>
-                        </Link>
-                      </CardHeader>
-                      
-                      <CardContent className="flex-1">
-                        {developer.bio && (
-                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                            {developer.bio}
-                          </p>
-                        )}
-                        
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-medium">Skills</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {developer.skills && Array.isArray(developer.skills) && developer.skills.length > 0 ? (
-                              developer.skills.slice(0, 4).map((skill, index) => (
-                                <span
-                                  key={index}
-                                  className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary"
-                                >
-                                  {skill}
-                                </span>
-                              ))
-                            ) : (
-                              <p className="text-sm text-muted-foreground">No skills listed</p>
-                            )}
-                            {developer.skills && developer.skills.length > 4 && (
-                              <span className="px-2 py-1 text-xs rounded-full bg-muted text-muted-foreground">
-                                +{developer.skills.length - 4} more
-                              </span>
-                            )}
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h3 className="font-satoshi font-semibold text-base text-foreground group-hover:text-[#2563eb] transition-colors">
+                                {developer.name || 'Developer'}
+                              </h3>
+                              <ShieldCheck className="w-3.5 h-3.5 text-[#2563eb]" />
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-1">{developer.role || 'Verified Engineer'}</p>
                           </div>
-                        </div>
-                      </CardContent>
-
-                      <CardFooter className="justify-center space-x-3">
-                        <Link to={`/chat?userId=${developer._id}`}>
-                          <Button variant="outline" size="sm" className="space-x-2">
-                            <MessageSquare className="h-4 w-4" />
-                            <span>Message</span>
-                          </Button>
                         </Link>
-                        
-                        {!isConnected(developer._id) && !hasSentRequest(developer._id) && (
-                          <Button
-                            size="sm"
-                            className="space-x-2"
-                            onClick={() => handleSendRequest(developer._id)}
-                            disabled={requestingUserId === developer._id}
-                          >
-                            {requestingUserId === developer._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <UserPlus className="h-4 w-4" />
-                            )}
-                            <span>
-                              {requestingUserId === developer._id ? 'Sending...' : 'Connect'}
+                      </div>
+
+                      {developer.bio && (
+                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-4">
+                          {developer.bio}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-1.5 mb-5">
+                        {developer.skills && Array.isArray(developer.skills) && developer.skills.length > 0 ? (
+                          developer.skills.slice(0, 4).map((skill, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded-[4px] bg-secondary border border-border text-[11px] font-geist text-foreground">
+                              {skill}
                             </span>
-                          </Button>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No stack tags listed</span>
                         )}
-                        
-                        {hasSentRequest(developer._id) && (
-                          <Button size="sm" variant="outline" disabled>
-                            Request Sent
-                          </Button>
+                        {developer.skills && developer.skills.length > 4 && (
+                          <span className="px-1.5 py-0.5 rounded-[4px] bg-secondary text-[11px] font-geist text-muted-foreground">
+                            +{developer.skills.length - 4}
+                          </span>
                         )}
-                        
-                        {isConnected(developer._id) && (
-                          <Button size="sm" variant="outline" disabled>
-                            Connected                          </Button>
-                        )}
-                      </CardFooter>
-                    </Card>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
+                      <Link to={`/chat?userId=${developer._id}`} className="dub-btn-ghost text-xs px-3 py-1.5 text-muted-foreground hover:text-foreground flex items-center gap-1">
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <span>Chat</span>
+                      </Link>
+
+                      {!isConnected(developer._id) && !hasSentRequest(developer._id) && (
+                        <button
+                          className="dub-btn-primary text-xs py-1.5 px-3.5 flex items-center gap-1"
+                          onClick={() => handleSendRequest(developer._id)}
+                          disabled={requestingUserId === developer._id}
+                        >
+                          {requestingUserId === developer._id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <UserPlus className="h-3.5 w-3.5" />
+                          )}
+                          <span>{requestingUserId === developer._id ? 'Sending...' : 'Connect'}</span>
+                        </button>
+                      )}
+
+                      {hasSentRequest(developer._id) && (
+                        <button disabled className="dub-btn-outline text-xs py-1.5 px-3 border-border text-[#2563eb] bg-secondary cursor-default">
+                          Request Sent
+                        </button>
+                      )}
+
+                      {isConnected(developer._id) && (
+                        <button disabled className="dub-btn-outline text-xs py-1.5 px-3 border-border text-[#16a34a] bg-secondary cursor-default">
+                          Connected
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
 
-              {/* Load More Button */}
               {pagination.page < pagination.pages && (
-                <div className="text-center">
-                  <Button
-                    variant="outline"
+                <div className="text-center pt-4">
+                  <button
                     onClick={handleLoadMore}
                     disabled={loading}
-                    className="min-w-32"
+                    className="dub-btn-outline text-xs px-6 py-2"
                   >
                     {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading...
-                      </>
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading more...
+                      </span>
                     ) : (
-                      <>
-                        Load More
-                        <span className="ml-2 text-muted-foreground">
-                          ({searchResults.length} of {pagination.total})
-                        </span>
-                      </>
+                      `Load More (${searchResults.length} of ${pagination.total})`
                     )}
-                  </Button>
+                  </button>
                 </div>
               )}
             </>
           ) : (
-            !loading && (              <div className="text-center py-12 animate-in fade-in duration-500">
-                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No developers found</h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  We couldn't find any developers matching "{debouncedQuery}". 
-                  Try searching with different keywords or skills.
-                </p>
-                <Button
-                  variant="outline"
+            !loading && (
+              <div className="dub-card p-16 text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-secondary border border-border mx-auto flex items-center justify-center text-muted-foreground">
+                  <Users className="h-6 w-6 text-[#2563eb]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-satoshi font-semibold text-lg text-foreground">No Profiles Found</h3>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                    We couldn't find any verified developers matching "{debouncedQuery}". Try searching with different keywords or skills.
+                  </p>
+                </div>
+                <button
                   onClick={handleClearSearch}
-                  className="mt-4"                >
+                  className="dub-btn-outline text-xs py-2 px-4"
+                >
                   Clear Search
-                </Button>
+                </button>
               </div>
             )
           )}
@@ -328,23 +320,26 @@ const SearchPage = () => {
       )}
 
       {/* Empty State - Show when no search has been performed */}
-      {!hasSearched && !debouncedQuery && (        <div className="text-center py-16 animate-in fade-in duration-500">
-          <Search className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-          <h3 className="text-xl font-semibold mb-2">Start Searching</h3>
-          <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            Enter a name or skill in the search box above to find developers. 
-            You can search for skills like "React", "Python", "UI/UX" or by developer names.
-          </p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {['React', 'Node.js', 'Python', 'UI/UX', 'DevOps'].map((skill) => (
-              <Button
+      {!hasSearched && !debouncedQuery && (
+        <div className="dub-card p-16 text-center space-y-6">
+          <div className="w-14 h-14 rounded-full bg-secondary border border-border mx-auto flex items-center justify-center text-muted-foreground">
+            <Search className="h-7 w-7 text-[#2563eb]" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="font-satoshi font-semibold text-xl text-foreground">Explore the Developer Directory</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Enter a name or technical stack keyword above. You can filter by specific languages like "React", "Python", "Go" or find specific engineers.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center pt-2">
+            {['React', 'TypeScript', 'Node.js', 'Python', 'Go', 'Machine Learning', 'DevOps'].map((skill) => (
+              <button
                 key={skill}
-                variant="outline"
-                size="sm"
                 onClick={() => setSearchQuery(skill)}
-                className="hover:bg-primary hover:text-primary-foreground"
-              >                {skill}
-              </Button>
+                className="px-3 py-1.5 rounded-full text-xs font-geist bg-secondary border border-border text-foreground hover:border-ring transition-all"
+              >
+                #{skill}
+              </button>
             ))}
           </div>
         </div>
