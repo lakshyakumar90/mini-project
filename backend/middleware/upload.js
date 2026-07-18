@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cloudinary = require('../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const hasCloudinaryKeys = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
@@ -21,6 +22,45 @@ if (!fs.existsSync(postsDir)) fs.mkdirSync(postsDir, { recursive: true });
 if (!fs.existsSync(coversDir)) fs.mkdirSync(coversDir, { recursive: true });
 if (!fs.existsSync(documentsDir)) fs.mkdirSync(documentsDir, { recursive: true });
 
+// Cloudinary Storages
+const cloudAvatarStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'devconnect/avatars',
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    transformation: [{ width: 500, height: 500, crop: 'limit' }]
+  }
+});
+
+const cloudPostStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'devconnect/posts',
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    transformation: [{ width: 1200, height: 1200, crop: 'limit' }]
+  }
+});
+
+const cloudCoverStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'devconnect/covers',
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    transformation: [{ width: 1600, height: 600, crop: 'limit' }]
+  }
+});
+
+// We keep documents local or you can configure raw uploads to cloudinary if needed, but typically docs might be better suited for different handling. Cloudinary supports docs via resource_type: 'raw'
+const cloudDocumentStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'devconnect/documents',
+    resource_type: 'raw', // For pdf, docx etc.
+    allowedFormats: ['pdf', 'doc', 'docx']
+  }
+});
+
+// Local Storages (Fallback)
 const avatarStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, avatarsDir),
   filename: (req, file, cb) => {
@@ -78,25 +118,25 @@ const documentFileFilter = (req, file, cb) => {
 };
 
 const rawUploadAvatar = multer({
-  storage: avatarStorage,
+  storage: hasCloudinaryKeys ? cloudAvatarStorage : avatarStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter
 });
 
 const rawUploadPostImage = multer({
-  storage: postImageStorage,
+  storage: hasCloudinaryKeys ? cloudPostStorage : postImageStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter
 });
 
 const rawUploadCover = multer({
-  storage: coverStorage,
+  storage: hasCloudinaryKeys ? cloudCoverStorage : coverStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter
 });
 
 const rawUploadDocument = multer({
-  storage: documentStorage,
+  storage: hasCloudinaryKeys ? cloudDocumentStorage : documentStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: documentFileFilter
 });
@@ -155,9 +195,11 @@ const uploadDocument = {
 // Helper to get public URL from req.file regardless of storage provider
 const getFileUrl = (file, type = 'avatars') => {
   if (!file) return null;
+  // If it's uploaded to Cloudinary via multer-storage-cloudinary, the URL is in file.path
   if (file.path && file.path.startsWith('http')) {
     return file.path;
   }
+  // Fallback for local disk storage
   if (file.filename) {
     const port = process.env.PORT || 3333;
     const baseUrl = process.env.API_BASE_URL || `http://localhost:${port}`;
@@ -166,16 +208,23 @@ const getFileUrl = (file, type = 'avatars') => {
   return null;
 };
 
-// Helper to safely upload to Cloudinary if keys exist, otherwise return disk getFileUrl
-const resolveImageUrl = async (file, folderName = 'posts', type = 'posts', transformOptions = [{ width: 1200, height: 1200, crop: 'limit' }]) => {
+// This function is kept for backward compatibility and cases where we need to manually upload,
+// but with CloudinaryStorage, req.file.path is already the Cloudinary URL.
+const resolveImageUrl = async (file, folderName = 'posts', type = 'posts', transformOptions = null) => {
   if (!file) return null;
   let fileUrl = getFileUrl(file, type);
+  // If it's already a Cloudinary URL from CloudinaryStorage, we just return it.
+  if (fileUrl && fileUrl.startsWith('http') && !fileUrl.includes('localhost')) {
+     return fileUrl;
+  }
+  // Otherwise, attempt manual upload (fallback logic)
   if (hasCloudinaryKeys && file.path && !file.path.startsWith('http')) {
     try {
-      const cloudRes = await cloudinary.uploader.upload(file.path, {
-        folder: `devconnect/${folderName}`,
-        transformation: transformOptions
-      });
+      const options = { folder: `devconnect/${folderName}` };
+      if (transformOptions) {
+        options.transformation = transformOptions;
+      }
+      const cloudRes = await cloudinary.uploader.upload(file.path, options);
       if (cloudRes && cloudRes.secure_url) {
         fileUrl = cloudRes.secure_url;
         fs.unlink(file.path, () => {});
