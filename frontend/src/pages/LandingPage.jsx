@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Navbar from '@/components/Navbar';
-import LoadingSpinner from '@/components/LoadingSpinner';
 import { submitContactMessage } from '@/services/contactService';
 import {
   Users,
@@ -72,9 +71,8 @@ const LandingPage = () => {
     }
   };
 
-  if (isAuthChecking) {
-    return <LoadingSpinner />;
-  }
+  // NOTE: never block landing page on auth check (Render cold start).
+  // Navbar + CTAs handle the loading state inline instead.
 
   // Mockup data for live interactive preview
   const previewDevelopers = {
@@ -169,19 +167,32 @@ const LandingPage = () => {
               DevConnect is a clean, focused professional network held together by hairline borders and high-signal data. Discover developers by tech stack, collaborate with clear intent, and chat instantly without noise.
             </p>
             
-            {/* CTA Buttons */}
+            {/* CTA Buttons — render immediately, resolve auth in place */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to={isAuthenticated ? "/dashboard" : "/signup"} className="w-full sm:w-auto">
-                <button className="dub-btn-dark w-full sm:w-auto px-6 py-3 text-base shadow-sm">
-                  {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
-                  <ArrowRight className="w-4 h-4 ml-1.5" />
-                </button>
-              </Link>
-              <Link to={isAuthenticated ? "/jobs" : "/login"} className="w-full sm:w-auto">
-                <button className="dub-btn-outline w-full sm:w-auto px-6 py-3 text-base">
-                  {isAuthenticated ? 'Explore Jobs & Bounties' : 'Sign in to Account'}
-                </button>
-              </Link>
+              {isAuthChecking ? (
+                <>
+                  <div className="w-full sm:w-auto px-6 py-3 rounded-xl bg-secondary animate-pulse text-sm text-muted-foreground text-center min-w-[180px]">
+                    Checking session…
+                  </div>
+                  <div className="w-full sm:w-auto px-6 py-3 rounded-xl border border-border animate-pulse text-sm text-muted-foreground text-center min-w-[180px]">
+                    Loading…
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Link to="/dashboard" className="w-full sm:w-auto">
+                    <button className="dub-btn-dark w-full sm:w-auto px-6 py-3 text-base shadow-sm">
+                      Dashboard
+                      <ArrowRight className="w-4 h-4 ml-1.5" />
+                    </button>
+                  </Link>
+                  <Link to={isAuthenticated ? "/jobs" : "/signup"} className="w-full sm:w-auto">
+                    <button className="dub-btn-outline w-full sm:w-auto px-6 py-3 text-base">
+                      {isAuthenticated ? 'Explore Jobs & Bounties' : 'Get Started Free'}
+                    </button>
+                  </Link>
+                </>
+              )}
             </div>
             <p className="text-xs text-muted-foreground pt-1">
               Built for engineering teams, hackathons, open-source maintainers, and ambitious side projects.
@@ -684,18 +695,26 @@ const LandingPage = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
-              <Link to={isAuthenticated ? "/dashboard" : "/signup"} className="w-full sm:w-auto">
-                <button className="dub-btn-dark w-full sm:w-auto px-6 py-3 text-base">
-                  {isAuthenticated ? 'Enter Dashboard' : 'Create Free Profile'}
-                  <ArrowRight className="w-4 h-4 ml-1.5" />
-                </button>
-              </Link>
-              {!isAuthenticated && (
-                <Link to="/login" className="w-full sm:w-auto">
-                  <button className="dub-btn-outline w-full sm:w-auto px-6 py-3 text-base">
-                    Log In
-                  </button>
-                </Link>
+              {isAuthChecking ? (
+                <div className="px-6 py-3 rounded-xl bg-secondary animate-pulse text-sm text-muted-foreground text-center min-w-[180px]">
+                  Checking session…
+                </div>
+              ) : (
+                <>
+                  <Link to="/dashboard" className="w-full sm:w-auto">
+                    <button className="dub-btn-dark w-full sm:w-auto px-6 py-3 text-base">
+                      Dashboard
+                      <ArrowRight className="w-4 h-4 ml-1.5" />
+                    </button>
+                  </Link>
+                  {!isAuthenticated && (
+                    <Link to="/signup" className="w-full sm:w-auto">
+                      <button className="dub-btn-outline w-full sm:w-auto px-6 py-3 text-base">
+                        Get Started
+                      </button>
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>

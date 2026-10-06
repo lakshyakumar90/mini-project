@@ -9,7 +9,7 @@ import { Terminal, Menu } from 'lucide-react';
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user, isAuthChecking } = useSelector((state) => state.auth);
 
   const handleLogout = () => {
     dispatch(logoutUser()).then(() => {
@@ -49,7 +49,12 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
         <div className="flex items-center gap-3">
           <ThemeToggle />
 
-          {isAuthenticated ? (
+          {isAuthChecking ? (
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-16 rounded-lg bg-secondary animate-pulse" />
+              <div className="h-8 w-16 rounded-lg bg-secondary animate-pulse hidden sm:block" />
+            </div>
+          ) : isAuthenticated ? (
             <div className="flex items-center gap-3 pl-2 border-l border-border">
               <NotificationBell />
               
