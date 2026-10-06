@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useEffect } from 'react';
 
@@ -11,6 +11,7 @@ import MainLayout from './components/layout/MainLayout';
 
 // Redux actions
 import { getCurrentUser } from './store/slices/authSlice';
+import { setStoredToken } from './services/userService';
 import { refreshNetworkState } from './store/slices/connectionSlice';
 
 // Pages
@@ -45,12 +46,37 @@ const initializeTheme = () => {
   }
 };
 
+// Picks up ?oauth=success&token=... on ANY route change (OAuth landing,
+// or login?redirect=... loop) — persists token + refreshes auth + strips URL
+const OAuthTokenHandler = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oauthToken = params.get('token');
+    if (params.get('oauth') === 'success' && oauthToken) {
+      setStoredToken(oauthToken);
+      dispatch(getCurrentUser());
+      params.delete('token');
+      params.delete('oauth');
+      navigate(
+        { pathname: location.pathname, search: params.toString() ? `?${params.toString()}` : '' },
+        { replace: true }
+      );
+    }
+  }, [location, navigate, dispatch]);
+
+  return null;
+};
+
 const App = () => {
   const dispatch = useDispatch();
   const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Get current user on app load
+    // Get current user on app load (Bearer token attached via interceptor)
     dispatch(getCurrentUser());
     initializeTheme();
   }, [dispatch]);
@@ -64,6 +90,7 @@ const App = () => {
   return (
     <Router>
       <ErrorBoundary>
+        <OAuthTokenHandler />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />

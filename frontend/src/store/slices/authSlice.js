@@ -1,9 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit';
-import authService from '@/services/userService';
+import authService, { getStoredToken, setStoredToken } from '@/services/userService';
 
 const initialState = {
   user: null,
-  token: null,
+  token: getStoredToken(),
   isAuthenticated: false,
   loading: false,
   isAuthChecking: true,
@@ -16,14 +16,17 @@ const authSlice = createSlice({
   reducers: {
     // Auth state management
     setAuthData: (state, action) => {
+      const token = action.payload.token || action.payload.user?.token || getStoredToken();
+      if (token) setStoredToken(token);
       state.user = action.payload.user || null;
-      state.token = action.payload.token || null;
+      state.token = token || null;
       state.isAuthenticated = !!action.payload.user;
       state.loading = false;
       state.isAuthChecking = false;
       state.error = null;
     },
     clearAuthData: (state) => {
+      setStoredToken(null);
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;

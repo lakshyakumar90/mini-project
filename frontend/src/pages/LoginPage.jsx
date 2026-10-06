@@ -26,6 +26,16 @@ const LoginPage = () => {
     }
   }, [isAuthenticated, isAuthChecking, navigate, searchParams]);
 
+  const oauthError = searchParams.get('error');
+  const oauthErrorMessage = oauthError
+    ? {
+        github_oauth_failed: 'GitHub sign-in was cancelled. Please try again.',
+        github_token_exchange_failed: 'GitHub login failed during token exchange. Check server GITHUB_CLIENT_ID/SECRET.',
+        github_no_email: 'GitHub did not share an email. Make sure your GitHub email is public or verified.',
+        github_oauth_exception: 'GitHub login hit an unexpected error. Please try again.',
+      }[oauthError] || `GitHub login failed (${oauthError}). Please try again.`
+    : null;
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -96,6 +106,11 @@ const LoginPage = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {oauthErrorMessage && (
+              <div className="p-3 rounded-[8px] bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-medium">
+                {oauthErrorMessage}
+              </div>
+            )}
             {error && (
               <div className="p-3 rounded-[8px] bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-medium">
                 {error}

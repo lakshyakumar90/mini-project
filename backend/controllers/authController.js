@@ -162,8 +162,10 @@ const githubCallback = async (req, res) => {
     };
     res.cookie('jwt', token, cookieOptions);
 
-    // Redirect to frontend
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard?oauth=success`);
+    // Redirect to frontend with token in query (cross-site cookies are
+    // unreliable between Vercel <-> Render, frontend stores it + uses
+    // Authorization: Bearer header which / Authorization fallback reads)
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard?oauth=success&token=${token}`);
   } catch (error) {
     console.error('GitHub OAuth callback error:', error);
     res.redirect(`${process.env.FRONTEND_URL}/login?error=github_oauth_exception`);

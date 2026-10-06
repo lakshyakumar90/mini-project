@@ -4,16 +4,48 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 
+const TOKEN_KEY = 'devconnect_token';
+
+export const getStoredToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredToken = (token) => {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignore (private mode etc.)
+  }
+};
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
   timeout: 30000, // don't hang forever on Render cold start
 });
 
+// Attach Bearer token (primary auth for cross-site Vercel <-> Render,
+// cookie is best-effort fallback since 3rd-party cookies get blocked)
+api.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 
 const register = async (userData) => {
   try {
     const response = await api.post('/users/register', userData);
+    if (response.data?.user?.token) setStoredToken(response.data.user.token);
+    else if (response.data?.token) setStoredToken(response.data.token);
     return response.data;
   } catch (error) {
     throw error.response?.data?.message || 'An error occurred during registration';
@@ -24,6 +56,8 @@ const register = async (userData) => {
 const login = async (email, password) => {
   try {
     const response = await api.post('/users/login', { email, password });
+    if (response.data?.user?.token) setStoredToken(response.data.user.token);
+    else if (response.data?.token) setStoredToken(response.data.token);
     return response.data;
   } catch (error) {
     throw error.response?.data?.message || 'Invalid email or password';
@@ -36,6 +70,8 @@ const logout = async () => {
     await api.get('/users/logout');
   } catch (error) {
     console.error('Logout error:', error);
+  } finally {
+    setStoredToken(null);
   }
 };
 
