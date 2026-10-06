@@ -1,14 +1,8 @@
-import axios from 'axios';
+import { createApi } from './apiClient';
 
 const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3333/api'}/jobs`;
 
-const api = axios.create({
-  baseURL: API_URL,
-  withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+const api = createApi(API_URL);
 
 const jobService = {
   getJobs: async ({ cursor = null, limit = 12, type = 'all', locationType = 'all', skills = null, search = '' }) => {

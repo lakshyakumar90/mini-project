@@ -10,8 +10,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 
 // Redux actions
-import { getCurrentUser } from './store/slices/authSlice';
-import { setStoredToken } from './services/userService';
+import { getCurrentUser, clearAuthData } from './store/slices/authSlice';
+import { setStoredToken, AUTH_EXPIRED_EVENT } from './services/apiClient';
 import { refreshNetworkState } from './store/slices/connectionSlice';
 
 // Pages
@@ -67,6 +67,17 @@ const OAuthTokenHandler = () => {
       );
     }
   }, [location, navigate, dispatch]);
+
+  // Any API call that 401s with a token (expired/invalid session) lands here:
+  // wipe auth state and bounce to login instead of showing raw errors
+  useEffect(() => {
+    const handleExpired = () => {
+      dispatch(clearAuthData());
+      navigate('/login?session=expired', { replace: true });
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+  }, [navigate, dispatch]);
 
   return null;
 };

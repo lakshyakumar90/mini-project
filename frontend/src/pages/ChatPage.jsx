@@ -18,7 +18,7 @@ import {
   markChatMessagesRead,
 } from "@/store/slices/chatSlice";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import useSwipeGesture from "@/hooks/useSwipeGesture";
 import socketService from "@/services/socketService";
 import { setUsersStatusMap } from "@/store/slices/presenceSlice";
@@ -556,11 +556,11 @@ const ChatPage = () => {
               You need to connect with other developers and have your request accepted before opening real-time chat rooms.
             </p>
           </div>
-          <a href="/dashboard" className="block pt-2">
+          <Link to="/dashboard" className="block pt-2">
             <button className="dub-btn-primary text-xs py-2 px-5">
               Explore Developer Directory
             </button>
-          </a>
+          </Link>
         </div>
       </div>
     );
