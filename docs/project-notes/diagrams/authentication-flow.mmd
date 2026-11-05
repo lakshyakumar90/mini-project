@@ -1,0 +1,17 @@
+sequenceDiagram
+  participant Browser
+  participant API as Express
+  participant User as MongoDB User
+  Browser->>API: POST /api/users/register or /login
+  API->>User: validate/create or find credentials
+  User->>User: bcrypt hash before save (register)
+  API->>API: bcrypt compare and sign JWT (login)
+  API-->>Browser: response with token/cookie behavior from controller
+  Note over Browser: frontend stores token in localStorage; OAuth callback also redirects with token query
+  Browser->>API: protected request with Cookie or Bearer
+  API->>API: jwt.verify
+  API->>User: findById(decoded.id)
+  User-->>API: current account
+  API-->>Browser: route response
+  Browser->>API: GET logout
+  API-->>Browser: clear cookie response; frontend clears stored token

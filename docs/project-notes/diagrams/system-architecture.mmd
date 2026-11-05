@@ -1,0 +1,12 @@
+flowchart LR
+  User[Browser user] --> SPA[React SPA / Vite]
+  SPA -->|Axios REST: cookie or Bearer JWT| API[Express 5 API]
+  SPA <-->|Socket.IO: chat, presence, notifications| API
+  API --> ODM[Mongoose]
+  ODM --> Mongo[(MongoDB)]
+  API --> Redis[(Redis: Socket.IO adapter and presence)]
+  API --> GitHub[GitHub OAuth and REST API]
+  API --> Cloudinary[Cloudinary media, when configured]
+  API --> SMTP[SMTP via Nodemailer]
+  Vercel[Vercel configuration] -. build/routing intent .-> SPA
+  Vercel -. Node API builder .-> API

@@ -1,0 +1,18 @@
+sequenceDiagram
+  participant A as Requesting developer
+  participant UI as Connections UI/service
+  participant API as Express
+  participant C as connectionController
+  participant DB as MongoDB
+  participant N as Notification + Socket.IO
+  A->>UI: send connection request
+  UI->>API: POST /api/connections/request/:userId
+  API->>C: protect + request rate limit
+  C->>DB: check existing request / create pending Connection
+  C->>N: notify recipient
+  N->>DB: persist Notification
+  N-->>N: emit realtime event if socket available
+  A-->>UI: request result
+  A->>API: recipient accepts or rejects
+  API->>DB: update Connection status
+  API->>N: create acceptance notification when appropriate

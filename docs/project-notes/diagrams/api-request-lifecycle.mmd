@@ -1,0 +1,24 @@
+sequenceDiagram
+  participant Page as React page
+  participant Redux as Redux thunk/slice
+  participant Axios as Service/Axios
+  participant Express
+  participant Auth as protect middleware
+  participant Controller
+  participant Mongoose
+  participant MongoDB
+  Page->>Redux: dispatch feature operation
+  Redux->>Axios: call service
+  Axios->>Axios: attach Bearer token + credentials
+  Axios->>Express: HTTP request
+  Express->>Auth: route middleware
+  Auth->>Mongoose: verify JWT then load User
+  Mongoose->>MongoDB: user lookup
+  MongoDB-->>Auth: user
+  Auth->>Controller: req.user + request
+  Controller->>Mongoose: feature query/update
+  Mongoose->>MongoDB: database operation
+  MongoDB-->>Controller: result
+  Controller-->>Axios: JSON/status
+  Axios-->>Redux: result or error
+  Redux-->>Page: updated view state

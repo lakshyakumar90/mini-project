@@ -1,0 +1,19 @@
+flowchart TB
+  Repo[Git repository]
+  Repo --> FE[frontend/ independent Vite app]
+  Repo --> BE[backend/ independent Express app]
+  FE --> Pages[src/pages]
+  FE --> Components[src/components]
+  FE --> State[src/store + slices]
+  FE --> Services[src/services: Axios and Socket.IO]
+  Services --> API[HTTP/socket contract]
+  BE --> Routes[routes]
+  Routes --> Middleware[middleware]
+  Routes --> Controllers[controllers]
+  Controllers --> Models[models / Mongoose]
+  Controllers --> Utils[utils/socket + notification helper]
+  Models --> Mongo[(MongoDB)]
+  Utils --> Redis[(Redis adapter/presence)]
+  FE -. frontend/vercel.json .-> Vercel[Vercel SPA rewrite]
+  BE -. root vercel.json .-> Vercel
+  Lock[backend pnpm lock only; no root workspace] -.-> Repo

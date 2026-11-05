@@ -1,0 +1,18 @@
+sequenceDiagram
+  participant Client as socketService
+  participant Server as utils/socket.js
+  participant Redis
+  participant Chat as MongoDB Chat
+  Client->>Server: connect / register_user(userId)
+  Server->>Redis: update user_presence
+  Client->>Server: join_chat / typing_start
+  Client->>Server: send_message payload
+  Server->>Server: check connection or job relation
+  Server->>Chat: persist message
+  Chat-->>Server: saved document
+  Server-->>Client: message_sent / receive_message
+  Server->>Redis: cross-node room broadcast adapter
+  Client->>Server: message_delivered or mark_messages_read
+  Server->>Chat: update status
+  Server-->>Client: status event
+  Note over Client,Server: Current registration appears client-claimed; authenticate socket handshake before trusting identity

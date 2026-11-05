@@ -4,7 +4,7 @@ import { logoutUser } from '@/store/slices/authSlice';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ThemeToggle from '@/components/ThemeToggle';
 import NotificationBell from '@/components/notifications/NotificationBell';
-import { Terminal, Menu } from 'lucide-react';
+import { Terminal, Menu, BookOpen } from 'lucide-react';
 
 const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
   const dispatch = useDispatch();
@@ -47,6 +47,9 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
 
         {/* Right Controls */}
         <div className="flex items-center gap-3">
+          <Link to="/docs" className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" aria-label="Project documentation">
+            <BookOpen className="w-3.5 h-3.5" /> Docs
+          </Link>
           <ThemeToggle />
 
           {isAuthChecking ? (

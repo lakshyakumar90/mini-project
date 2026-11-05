@@ -1,0 +1,19 @@
+sequenceDiagram
+  participant User
+  participant UI as JobsPage / Redux
+  participant API as jobService / Express
+  participant Job as jobController
+  participant DB as MongoDB
+  User->>UI: filter and browse opportunities
+  UI->>API: GET /api/jobs with filters/cursor
+  API->>Job: protect then getJobs
+  Job->>DB: query jobs
+  DB-->>UI: page and cursor
+  User->>UI: apply with resume/documents
+  UI->>API: POST /api/jobs/:id/apply multipart
+  API->>Job: Multer fields + applyToJob
+  Job->>DB: append embedded application
+  DB-->>UI: application result
+  User->>UI: update application status
+  UI->>API: PUT /:id/application/:applicationId/status
+  API->>DB: authorize/update application status

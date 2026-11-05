@@ -1,0 +1,69 @@
+erDiagram
+  USER ||--o{ POST : authors
+  USER ||--o{ CONNECTION : requester_or_recipient
+  USER }o--o{ CHAT : participants
+  USER ||--o{ JOB : posts
+  USER ||--o{ NOTIFICATION : recipient_or_sender
+  POST ||--o{ COMMENT : embeds
+  USER ||--o{ COMMENT : author
+  POST }o--o{ USER : likes
+  CHAT ||--o{ MESSAGE : embeds
+  USER ||--o{ MESSAGE : sender
+  JOB ||--o{ APPLICATION : embeds
+  USER ||--o{ APPLICATION : applicant
+  USER {
+    ObjectId _id PK
+    string email UK
+    string name
+    string password
+    string githubId
+  }
+  POST {
+    ObjectId _id PK
+    ObjectId author FK
+    string content
+    string type
+    string tags
+  }
+  CONNECTION {
+    ObjectId _id PK
+    ObjectId requester FK
+    ObjectId recipient FK
+    string status
+  }
+  CHAT {
+    ObjectId _id PK
+    ObjectId participants FK
+    Message messages
+    date lastMessage
+  }
+  JOB {
+    ObjectId _id PK
+    ObjectId postedBy FK
+    string title
+    string status
+    Application applications
+  }
+  NOTIFICATION {
+    ObjectId _id PK
+    ObjectId recipient FK
+    ObjectId sender FK
+    string type
+    boolean read
+  }
+  COMMENT {
+    ObjectId author FK
+    string content
+    date createdAt
+  }
+  MESSAGE {
+    ObjectId senderId FK
+    string text
+    date timestamp
+    string status
+  }
+  APPLICATION {
+    ObjectId applicant FK
+    string status
+    date appliedAt
+  }

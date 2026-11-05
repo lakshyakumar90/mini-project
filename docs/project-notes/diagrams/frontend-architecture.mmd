@@ -1,0 +1,15 @@
+flowchart TB
+  Main[main.jsx: Redux Provider + React mount] --> App[App.jsx: router, auth restore, theme, OAuth token]
+  App --> Guard[ProtectedRoute]
+  App --> Pages[Pages]
+  Pages --> Feature[Feature components: posts/jobs/notifications/layout]
+  Pages --> Hooks[useSwipeGesture]
+  Pages --> Store[Redux Toolkit store]
+  Feature --> Store
+  Store --> Slices[auth/chat/connections/feed/jobs/posts/notifications/presence/profile slices]
+  Slices --> Services[service modules]
+  Services --> Client[apiClient Axios: token, timeout, 401 handling]
+  Client --> REST[Express REST]
+  Pages --> SocketService[socketService]
+  SocketService <-->|Socket.IO events| Server[Express-attached Socket.IO]
+  Feature --> UI[UI primitives: Radix + Tailwind]

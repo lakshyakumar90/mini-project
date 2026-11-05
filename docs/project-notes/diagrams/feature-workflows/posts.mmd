@@ -1,0 +1,19 @@
+sequenceDiagram
+  participant User
+  participant Feed as FeedPage / Redux
+  participant API as postService / Express
+  participant Controller as postController
+  participant DB as MongoDB
+  User->>Feed: open feed / select filter
+  Feed->>API: GET /api/posts/feed?cursor=&tag=&tab=
+  API->>Controller: protect then getFeed
+  Controller->>DB: indexed query + populate author
+  DB-->>Feed: posts + next cursor
+  User->>Feed: create post with optional image
+  Feed->>API: POST /api/posts multipart
+  API->>Controller: rate limit + Multer + createPost
+  Controller->>DB: save Post
+  DB-->>Feed: created post JSON
+  User->>Feed: like/comment
+  Feed->>API: POST /:id/like or /:id/comment
+  API->>DB: update embedded arrays; maybe notify author

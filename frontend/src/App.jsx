@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 
 // Components
 import ErrorBoundary from './components/ErrorBoundary';
@@ -21,6 +21,7 @@ import SignupPage from './pages/SignupPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import NotFoundPage from './pages/NotFoundPage';
+const DocsPage = lazy(() => import('./pages/DocsPage'));
 
 // Dashboard pages
 import DashboardPage from './pages/DashboardPage';
@@ -103,6 +104,7 @@ const App = () => {
       <ErrorBoundary>
         <OAuthTokenHandler />
         <Routes>
+          <Route path="/docs/*" element={<Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading documentation…</div>}><DocsPage /></Suspense>} />
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />

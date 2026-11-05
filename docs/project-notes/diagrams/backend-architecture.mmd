@@ -1,0 +1,16 @@
+flowchart TB
+  Entry[index.js: dotenv, Express, HTTP server] --> Middleware[CORS / JSON / cookie / static uploads]
+  Entry --> Mount[Route mounts under /api]
+  Mount --> Routes[auth, users, posts, jobs, connections, messages, notifications, contact]
+  Routes --> Protect[protect JWT middleware on private groups]
+  Routes --> Limit[express-rate-limit on selected endpoints]
+  Routes --> Upload[Multer + storage selection]
+  Routes --> Controllers[Controller functions]
+  Controllers --> Models[Mongoose models]
+  Models --> DB[(MongoDB)]
+  Controllers --> Notify[notificationController.notifyUser]
+  Notify --> Socket[Socket.IO getIO]
+  Entry --> SocketInit[initializeSocket]
+  SocketInit --> RedisAdapter[Redis adapter + presence]
+  SocketInit --> Models
+  Controllers --> External[GitHub / Cloudinary / SMTP integrations]

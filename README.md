@@ -93,5 +93,7 @@ For more detailed information about the frontend and backend setups, please refe
 - [Backend Documentation](./backend/README.md)
 - [Frontend Documentation](./frontend/README.md)
 
+The complete project notes and interview guide are also available in the application at `/docs` after starting the frontend.
+
 ## License
 ISC

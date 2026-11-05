@@ -1,0 +1,13 @@
+flowchart LR
+  Dev[Developer changes] --> FEInstall[Install frontend dependencies]
+  Dev --> BEInstall[Install backend dependencies]
+  FEInstall --> FBuild[npm run build: Vite]
+  BEInstall --> BStart[node index.js]
+  FBuild --> VercelSPA[frontend Vercel SPA rewrite config]
+  BStart --> VercelAPI[root Vercel Node builder config]
+  VercelAPI --> Env[Deployment environment variables]
+  Env --> Mongo[(MongoDB)]
+  Env --> Redis[(Redis optional/fallback)]
+  Env --> Third[GitHub / Cloudinary / SMTP optional]
+  FBuild -. no CI workflow found .-> Manual[Manual/host-managed build path]
+  BStart -. Socket.IO needs persistent connection support .-> Runtime[Hosting runtime capability must be verified]
